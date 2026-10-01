@@ -25,6 +25,7 @@ Observed on October 2, 2026:
 | `npm run deploy:local` | Passed on Anvil chain 31337; six successful transaction receipts checked |
 | Deployed guard call | 100 raw tokens at $100 per token returned `10000000000000000000000` (USD18 = $10,000) |
 | Browser smoke check | Starter rendered; **Check connection** confirmed local chain/block 3 and handled a stopped chain with a recovery message |
+| Development refresh | App component separated from the mount entrypoint; refresh preserved UI state with no new browser errors |
 
 The local deployment used owned mocks. Addresses/receipts live in ignored `contracts/broadcast/DeploySandbox.s.sol/31337/run-latest.json` and are transient local evidence, not public testnet addresses. Test servers are stopped after verification; use the README commands to restart. Package audit results are not a contract audit. A configured workflow is not a completed remote CI run.
 
