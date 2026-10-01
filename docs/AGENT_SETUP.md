@@ -35,7 +35,7 @@ The UI starting direction is a steel-blue testing workspace: navy `#173649`, blu
 | Forge / Cast / Anvil | Installed locally through official `@foundry-rs/*` npm packages, version 1.7.1; commands run inside npm scripts |
 | Frontend | React 19.3.0, Viem 2.57.2, Vite 8.3.2, TypeScript 7.0.2; exact versions and integrity hashes in lockfile |
 | GitHub CLI | Installed and authenticated; active account `0xuser64bit` checked at setup |
-| GitHub plugin | Search confirmed available, **not installed/connected**. Suggested; user installation/connection remains optional |
+| GitHub plugin | **Not installed/connected; declined by the user for this request.** Use the authenticated CLI; do not suggest this plugin again |
 | Ponytail / Impeccable | Skills exposed by installed bundles; paths available. They need no chain account |
 | Native web / Codex file tools | Available in the session; used for official research and artifacts |
 | Browser automation | Tools/skills available; choose enabled surface when UI verification is needed |

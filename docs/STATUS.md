@@ -36,9 +36,10 @@ The local deployment used owned mocks. Addresses/receipts live in ignored `contr
 - Report exporter and complete end-to-end public demo.
 - Public testnet deployment, funded test wallet, hosting or remote repository.
 - HackQuest registration/submission, legal eligibility review and confirmed prize wallet.
-- Connected GitHub plugin (the authenticated CLI is available).
 - Customer validation or domain/trademark clearance.
 
 ## Next concrete task
+
+The user declined the GitHub plugin for this request. Use the authenticated GitHub CLI for authorized repository operations; plugin installation is not a pending setup task.
 
 M1 in `BUILD_PLAN.md`: implement the owned unsafe and guarded consumer and turn the split comparison into an actual contract action. Keep the existing guard regressions green, then wire that single complete flow into the frontend.
