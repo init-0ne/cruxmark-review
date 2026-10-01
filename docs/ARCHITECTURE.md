@@ -2,7 +2,7 @@
 
 ## Current foundation and intended flow
 
-The current app is a static React/TypeScript workspace using Vite and Viem. It checks a selected RPC's actual chain ID and block. The contract foundation consists of a read-only `PriceGuard`, owner-controlled mock feed/token-status inputs, tests, and `DeploySandbox`. It has no ERC-20 custody, borrowing, external integration scanner, report registry, or scenario runner UI yet.
+The current app is a static React/TypeScript landing page using Vite and Viem. Its three interactive scenario previews show explicitly illustrative expected behavior, not executed outcomes. It checks a selected RPC's actual chain ID and block; RPC client code loads only when a connection check is requested. The contract foundation consists of a read-only `PriceGuard`, owner-controlled mock feed/token-status inputs, tests, and `DeploySandbox`. It has no ERC-20 custody, borrowing, external integration scanner, report registry, or scenario runner UI yet.
 
 ```mermaid
 flowchart LR

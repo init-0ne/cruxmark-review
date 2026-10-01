@@ -1,0 +1,7 @@
+allowBuilds:
+  '@foundry-rs/anvil': true
+  '@foundry-rs/cast': true
+  '@foundry-rs/forge': true
+minimumReleaseAgeExclude:
+  - viem@2.57.2
+  - vite@8.3.2

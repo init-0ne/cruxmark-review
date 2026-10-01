@@ -34,7 +34,7 @@ Acceptance: a reviewer can reproduce a reported scenario from the code/configura
 
 Obtain a dedicated test wallet/faucet funds, dry-run the existing deployment script on the selected public testnet, broadcast with wallet authorization, confirm receipts/bytecode/ownership, and record a public deployment manifest. Verify each scenario from the published app using a fresh run.
 
-Use free Cloudflare Pages static hosting (`npm ci`, `npm run build`, output `dist`), no paid backend or domain. If build-time secrets become necessary, stop exposing them via Vite and revisit the architecture. Put contract execution in the local/CI or on-chain flow; a free edge function is not a Solidity compilation service.
+Use free Cloudflare Pages static hosting (`pnpm install --frozen-lockfile`, `pnpm run build`, output `dist`), no paid backend or domain. If build-time secrets become necessary, stop exposing them via Vite and revisit the architecture. Put contract execution in the local/CI or on-chain flow; a free edge function is not a Solidity compilation service.
 
 Acceptance: public URL, source/reviewer access, labeled addresses, reproducible scenarios and checklist complete. Prepare a short recording, but check actual submission fields before asserting a duration requirement. Submit before the documented cutoff and capture submission confirmation.
 

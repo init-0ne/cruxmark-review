@@ -1,4 +1,4 @@
-import { defineChain, createPublicClient, http } from 'viem'
+import { defineChain } from 'viem/utils'
 import { arbitrumSepolia, foundry } from 'viem/chains'
 
 const robinhoodTestnet = defineChain({
@@ -16,4 +16,7 @@ if (!Object.hasOwn(networks, selected)) throw new Error('VITE_NETWORK must be lo
 export const chain = networks[selected as keyof typeof networks]
 const override = import.meta.env.VITE_RPC_URL?.trim()
 if (override && !/^https?:\/\//.test(override)) throw new Error('VITE_RPC_URL must be an HTTP(S) URL')
-export const publicClient = createPublicClient({ chain, transport: http(override || undefined, { timeout: 8000, retryCount: 0 }) })
+export async function getPublicClient() {
+  const { createPublicClient, http } = await import('viem')
+  return createPublicClient({ chain, transport: http(override || undefined, { timeout: 8000, retryCount: 0 }) })
+}

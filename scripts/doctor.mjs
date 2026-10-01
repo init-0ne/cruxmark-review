@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 let failed = false
 for (const [label, command, args] of [
   ['Node', 'node', ['--version']],
+  ['pnpm', 'pnpm', ['--version']],
   ['Git', 'git', ['--version']],
   ['Forge', 'forge', ['--version']],
   ['Anvil', 'anvil', ['--version']],
@@ -12,7 +13,7 @@ for (const [label, command, args] of [
   const result = spawnSync(command, args, { encoding: 'utf8' })
   const ok = result.status === 0
   failed ||= !ok
-  console.log(`${ok ? 'OK' : 'MISSING'} ${label}: ${ok ? result.stdout.trim().split('\n')[0] : 'Run npm ci from the project root.'}`)
+  console.log(`${ok ? 'OK' : 'MISSING'} ${label}: ${ok ? result.stdout.trim().split('\n')[0] : 'Use pnpm 11.24.0 and run pnpm install --frozen-lockfile from the project root.'}`)
 }
 for (const file of ['AGENTS.md', '.agents/skills/cruxmark-build/SKILL.md', 'docs/PRODUCT.md', 'docs/HACKATHON.md', 'docs/ARCHITECTURE.md', 'docs/BUILD_PLAN.md', 'docs/AGENT_SETUP.md', 'docs/STATUS.md']) {
   const ok = existsSync(file)

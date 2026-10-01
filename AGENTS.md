@@ -32,7 +32,7 @@ Roles are responsibilities, not automatic subagent permission: product owner mai
 
 ## Validation and handoff
 
-- Run `npm run check` after implementation changes; narrower checks are fine for unrelated prose edits. Run `npm run doctor` after tool/config changes.
+- Run `pnpm run check` after implementation changes; narrower checks are fine for unrelated prose edits. Run `pnpm run doctor` after tool/config changes.
 - Financial/security logic needs behavioral tests, including rejection cases and exact time/unit boundaries. Never remove checks to get a green build.
 - Before marking a public scenario complete, verify success/revert outcomes, receipt status and contract state on the selected network. A transaction hash alone is not success.
 - Review the diff and `git status` before committing. Never include secrets or generated build/broadcast files. No remote publication or submission is implied by local setup.

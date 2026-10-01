@@ -25,14 +25,14 @@ These are useful capabilities available in the current machine's catalog. Read t
 
 No Solidity-specific skill was present in the current catalog. Solidity decisions therefore use the repository's domain skill, tested code and authoritative issuer/Chainlink/Foundry/Arbitrum documentation. Do not install a Solana skill for an EVM project or treat agent instructions as an audit tool.
 
-The UI starting direction is a steel-blue testing workspace: navy `#173649`, blue `#537b93`, pale blue `#eef4f7`, white `#f9fbfc`, orange fault accent `#ca552f`. Use compact system display/body/monospace typography, a visible incorrect/correct comparison, explicit experiment states, keyboard focus and mobile layout. No chart of invented activity or fake pass badges. The starter uses local system fonts and CSS, avoiding paid assets or external font requests.
+The landing page uses a precision-instrument identity: navy `#091017`, panels `#101b26`, ice `#94ddf2`, text `#e9f1f5`, muted steel `#9aafbf`, and coral fault accent `#ed9a79`. Sora display and Manrope body fonts are self-hosted under the included SIL Open Font Licenses. The signature SVG stress chamber visualizes a per-token input, seeded multiplier fault, and guarded value. Three interactive previews compare expected faulty/guarded behavior; they never claim executed passes. Use native CSS, responsive layouts, keyboard focus and reduced-motion support. No UI framework or animation dependency is needed.
 
 ## Verified tool and plugin state at setup
 
 | Capability | State |
 | --- | --- |
-| Node / npm / Git | Existing machine tools; Node 24.21.0, npm 11.19.0, Git 2.54.0 |
-| Forge / Cast / Anvil | Installed locally through official `@foundry-rs/*` npm packages, version 1.7.1; commands run inside npm scripts |
+| Node / pnpm / Git | Node 24.21.0, pnpm 11.24.0, Git 2.54.0; project package manager pinned in `package.json` |
+| Forge / Cast / Anvil | Installed locally through official `@foundry-rs/*` npm packages, version 1.7.1; installation scripts explicitly allowed; commands run inside pnpm scripts |
 | Frontend | React 19.3.0, Viem 2.57.2, Vite 8.3.2, TypeScript 7.0.2; exact versions and integrity hashes in lockfile |
 | GitHub CLI | Installed and authenticated; active account `0xuser64bit` checked at setup |
 | GitHub plugin | **Not installed/connected; declined by the user for this request.** Use the authenticated CLI; do not suggest this plugin again |
@@ -49,7 +49,7 @@ Other available skills include voice/media, documents/spreadsheets, 3D, Solana a
 1. Read the project entrypoint/status and select a concrete unfinished milestone.
 2. Inspect the affected source/callers and relevant domain docs.
 3. Implement the smallest complete result; preserve correctness, explicit states and scope labels.
-4. Run the appropriate checks (`npm run check` for code, `doctor` for setup).
+4. Run the appropriate checks (`pnpm run check` for code, `doctor` for setup).
 5. For a scenario/deployment claim, inspect actual state and receipts at the right chain/block.
 6. Review the diff; update status with observed results and the next step.
 
@@ -82,13 +82,13 @@ An official Robinhood testnet faucet is at [faucet.testnet.chain.robinhood.com](
 For CLI signing, the user can import a dedicated test account into an encrypted keystore interactively:
 
 ```sh
-npm exec -- cast wallet import cruxmark-testnet --interactive
+pnpm exec cast wallet import cruxmark-testnet --interactive
 ```
 
 The import prompts are for the user to complete privately; never paste the key into chat, source or a command argument. Set `CRUXMARK_TEST_WALLET` to the actual public address in your terminal. Dry-run with that keystore:
 
 ```sh
-npm exec -- forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --account cruxmark-testnet --sender "$CRUXMARK_TEST_WALLET"
+pnpm exec forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --account cruxmark-testnet --sender "$CRUXMARK_TEST_WALLET"
 ```
 
 After confirming chain, simulation, funds and intended mock deployment, the same command with `--broadcast` executes the deployment. Wallet/password authorization remains with the user. Sepolia uses its own RPC; never substitute a mainnet URL. Browser wallet signing is preferable once the scenario creation UI exists.
@@ -97,7 +97,7 @@ Record the resulting addresses/labels, source commit, owner, chain ID, transacti
 
 Set `.env.local` to `VITE_NETWORK=robinhood-testnet` (or `arbitrum-sepolia`) and restart the dev server. Current UI checks network connectivity only. Connecting the deployment manifest, wallet and scenario controls is M2; addresses alone do not complete the platform.
 
-Free static hosting: use Node 24, install `npm ci`, build `npm run build`, publish `dist`, and set the public `VITE_NETWORK` before building. No runtime private key, paid backend, Cloudflare Worker or custom domain is required. Confirm the account is on the free plan before publication.
+Free static hosting: use Node 24, install `pnpm install --frozen-lockfile`, build `pnpm run build`, publish `dist`, and set the public `VITE_NETWORK` before building. No runtime private key, paid backend, Cloudflare Worker or custom domain is required. Confirm the account is on the free plan before publication.
 
 ## Primary references
 
