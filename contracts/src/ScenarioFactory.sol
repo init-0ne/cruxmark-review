@@ -19,6 +19,7 @@ contract ScenarioInstance {
 
     event TokenStateUpdated(bool paused, uint256 multiplier);
     event PriceRoundUpdated(int256 answer, uint256 startedAt, uint256 updatedAt);
+    event SequencerRoundUpdated(int256 status, uint256 startedAt, uint256 updatedAt);
 
     constructor(address runOwner) {
         require(
@@ -59,6 +60,14 @@ contract ScenarioInstance {
     function setPriceRound(int256 answer, uint256 startedAt, uint256 updatedAt) external onlyOwner {
         price.setRound(answer, startedAt, updatedAt);
         emit PriceRoundUpdated(answer, startedAt, updatedAt);
+    }
+
+    function setSequencerRound(int256 status, uint256 startedAt, uint256 updatedAt)
+        external
+        onlyOwner
+    {
+        sequencer.setRound(status, startedAt, updatedAt);
+        emit SequencerRoundUpdated(status, startedAt, updatedAt);
     }
 }
 

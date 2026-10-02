@@ -95,5 +95,27 @@ contract ScenarioFactoryTest {
         vm.prank(address(0xBEEF));
         vm.expectRevert(bytes("Only scenario owner"));
         mine.setPriceRound(100e8, 10_000, 10_000);
+        vm.prank(address(0xBEEF));
+        vm.expectRevert(bytes("Only scenario owner"));
+        mine.setSequencerRound(1, 10_000, 10_000);
+    }
+
+    function testSequencerDowntimeBlocksGuardedButNotUnsafe() public {
+        ScenarioInstance mine = factory.createScenario();
+        mine.unsafeConsumer().deposit(100e18);
+        mine.guardedConsumer().deposit(100e18);
+
+        mine.setSequencerRound(1, 10_000, 10_000);
+        // Seeded fault ignores sequencer downtime entirely.
+        mine.unsafeConsumer().borrow(6_000e18);
+        GuardedStockConsumer guarded = mine.guardedConsumer();
+        vm.expectRevert(PriceGuard.SequencerUnavailable.selector);
+        guarded.borrow(1);
+
+        // Recovery after the grace window reopens the guarded path.
+        mine.setSequencerRound(0, 10_000 - 3601, 10_000);
+        vm.warp(10_001);
+        guarded.borrow(6_000e18);
+        require(guarded.debt(address(this)) == 6_000e18, "Recovery never opens");
     }
 }

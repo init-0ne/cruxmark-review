@@ -70,6 +70,7 @@ export default function ExecutionPanel() {
   const [instances, setInstances] = useState<Address[]>([])
   const [multiplier, setMultiplier] = useState<bigint | undefined>()
   const [positions, setPositions] = useState<Positions | undefined>()
+  const [attempts, setAttempts] = useState<bigint[]>([])
   const [txs, setTxs] = useState<TxRecord[]>([])
 
   function recordTx(label: string, hash: string, blockNumber: bigint, status: string) {
@@ -283,6 +284,7 @@ export default function ExecutionPanel() {
         return
       }
       setInstance(newest)
+      setAttempts([])
       const kids = await loadChildren(newest)
       await refreshState(newest, account, kids)
       setNotice({
@@ -297,6 +299,7 @@ export default function ExecutionPanel() {
   async function handleSelect(address: Address) {
     if (!account) return
     setInstance(address)
+    setAttempts([])
     setBusy('Load scenario')
     try {
       const kids = await loadChildren(address)
@@ -364,7 +367,10 @@ export default function ExecutionPanel() {
           chain,
         }),
       )
-      if (ok) await refreshState(instance, account, children)
+      if (ok) {
+        setAttempts((prev) => [...prev, BORROW_INCORRECT])
+        await refreshState(instance, account, children)
+      }
     } else if (kind === 'guarded-incorrect') {
       const ok = await sendTransaction(
         'Borrow $12,000 on guarded',
@@ -379,7 +385,10 @@ export default function ExecutionPanel() {
           }),
         { expectedRevert: 'Guard rejected the incorrect cap as expected.' },
       )
-      if (ok) await refreshState(instance, account, children)
+      if (ok) {
+        setAttempts((prev) => [...prev, BORROW_INCORRECT])
+        await refreshState(instance, account, children)
+      }
     } else {
       const ok = await sendTransaction('Borrow $6,000 on guarded', (wallet) =>
         wallet.writeContract({
@@ -391,7 +400,10 @@ export default function ExecutionPanel() {
           chain,
         }),
       )
-      if (ok) await refreshState(instance, account, children)
+      if (ok) {
+        setAttempts((prev) => [...prev, BORROW_CORRECT])
+        await refreshState(instance, account, children)
+      }
     }
   }
 
@@ -458,7 +470,7 @@ export default function ExecutionPanel() {
         guarded: children.guarded,
         multiplier,
         deposit: DEPOSIT_AMOUNT,
-        borrows: [BORROW_INCORRECT, BORROW_CORRECT],
+        borrows: attempts,
         positions,
         transactions: txs,
       })

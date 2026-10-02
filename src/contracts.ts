@@ -53,6 +53,17 @@ export const instanceAbi = [
     ],
     outputs: [],
   },
+  {
+    type: 'function',
+    name: 'setSequencerRound',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'status', type: 'int256' },
+      { name: 'startedAt', type: 'uint256' },
+      { name: 'updatedAt', type: 'uint256' },
+    ],
+    outputs: [],
+  },
 ] as const satisfies Abi
 
 export const consumerAbi = [

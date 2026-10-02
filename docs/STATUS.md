@@ -62,9 +62,15 @@ M5 in `BUILD_PLAN.md`: public testnet deployment and submission — dedicated te
 
 October 2, 2026:
 
-- `src/evidence.ts` builds a versioned (`cruxmark-evidence/1`) JSON report from observed execution state only: schema/scenario/run IDs, chain, contract addresses, adapter description, max-age/grace assumptions, decimal-string inputs/observations, confirmed transactions with hashes/blocks/receipt status, limitations and reproduction steps. The execution panel offers a download gated on complete observed state.
-- Behavioral checks executed against the compiled module: a 30-digit integer roundtrips exactly through decimal strings, a fully confirmed report validates true, a pending/incomplete receipt validates false, and building with zero transactions throws. `pnpm run check` passed (strict TypeScript, production build, formatting, 30 contract tests).
+- `src/evidence.ts` builds a versioned (`cruxmark-evidence/1`) JSON report from observed execution state only: schema/scenario/run IDs, chain, contract addresses, adapter description, max-age/grace assumptions, decimal-string inputs/observations, confirmed transactions with hashes/blocks/receipt status, limitations and reproduction steps. The execution panel offers a download gated on complete observed state, and the report records only borrow amounts actually attempted in that run.
+- Behavioral checks executed against the compiled module: a 30-digit integer roundtrips exactly through decimal strings, a fully confirmed report validates true, a pending/incomplete receipt validates false, and building with zero transactions throws. `pnpm run check` passed (strict TypeScript, production build, formatting, 31 contract tests).
 - A rejected-signature or unconfirmed hash can never appear as a pass: only confirmed `success` receipts are recorded, and mined reverts on the expected-guarded borrow now surface as confirmed guard evidence. The report hash, if ever added, would be tamper evidence only, not attestation.
+
+## Sequencer control per instance
+
+October 2, 2026:
+
+- `ScenarioInstance.setSequencerRound` lets the scenario owner drive downtime/recovery inputs without touching another run. Covered: sequencer-down blocks guarded borrowing (`SequencerUnavailable`) while the seeded unsafe consumer still permits it; restoring a pre-grace timestamp and advancing past the grace window reopens guarded borrowing. Non-owners are rejected. `pnpm run check` (31 tests) and `pnpm run deploy:local` both pass.
 
 ## Live split execution verification
 
