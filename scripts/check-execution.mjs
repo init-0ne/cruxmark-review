@@ -8,7 +8,7 @@ import { foundry } from 'viem/chains'
 import { factoryAbi, BORROW_CORRECT, BORROW_INCORRECT, BORROW_PROBE, DEPOSIT_AMOUNT } from '../src/contracts.ts'
 import { actionOutcome, confirmAction, encodeSubmission, restoreSubmission, loadOwnedRuns, loadRun, readSnapshot, submitAction, SupersededTransactionError, verifyFactory } from '../src/execution.ts'
 import { buildEvidenceReport, serialize, validateEvidenceReport } from '../src/evidence.ts'
-import { assertWalletSession, classifyError, readWalletSession, switchToSelectedChain } from '../src/wallet.ts'
+import { assertWalletSession, connectLocalAccount, classifyError, getProvider, readWalletSession, switchToSelectedChain } from '../src/wallet.ts'
 
 const server = createServer()
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -105,7 +105,7 @@ try {
   const replaced = new Proxy(client, { get(target, key) { return key === 'waitForTransactionReceipt' ? async () => client.getTransactionReceipt({ hash: records[0].hash }) : target[key] } })
   await assert.rejects(confirmAction(replaced, pending), SupersededTransactionError)
   const snapshot = await readSnapshot(client, run, owner)
-  const source = { revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), dirty: true, compiler: '0.8.30', evmVersion: 'paris', optimizerRuns: 200, factoryCodeHash: codeHash }
+  const source = { revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), dirty: !!execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim(), compiler: '0.8.30', evmVersion: 'paris', optimizerRuns: 200, factoryCodeHash: codeHash }
   const report = buildEvidenceReport({ owner, contracts: run, chainId: 31337, chainName: 'Isolated local check', source, snapshot, actions: records })
   assert.equal(report.result, 'complete')
   assert.equal(report.checks.length, 15)
@@ -143,6 +143,14 @@ try {
   await assert.rejects(assertWalletSession(other), /account changed/)
   window.ethereum.request = async () => ['invalid account']
   await assert.rejects(readWalletSession(), /invalid accounts/)
+  window.location = { hostname: 'example.com' }
+  await assert.rejects(connectLocalAccount(`http://127.0.0.1:${port}`), /loopback/)
+  window.location.hostname = '127.0.0.1'
+  await assert.rejects(connectLocalAccount('https://example.com'), /loopback/)
+  assert.equal((await connectLocalAccount(`http://127.0.0.1:${port}`)).toLowerCase(), owner.toLowerCase())
+  await assertWalletSession(owner)
+  await assert.rejects(getProvider().request({ method: 'anvil_setBalance', params: [owner, '0x0'] }), /Unsupported/)
+  await assert.rejects(getProvider().request({ method: 'personal_sign', params: ['0x', owner] }), /Unsupported/)
   delete globalThis.window
 
   mkdirSync('work/verification', { recursive: true })

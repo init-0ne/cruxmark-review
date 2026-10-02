@@ -13,17 +13,45 @@ declare global {
   }
 }
 
+let localProvider: EthereumProvider | undefined
+
 export function getProvider(): EthereumProvider | undefined {
-  return window.ethereum
+  return localProvider || window.ethereum
 }
 
 export async function connectAccount(): Promise<`0x${string}`> {
+  localProvider = undefined
   const provider = getProvider()
   if (!provider) throw new Error('No wallet found. Install a browser wallet to continue.')
   await provider.request({ method: 'eth_requestAccounts' })
   const session = await readWalletSession()
   if (!session.account) throw new Error('No accounts authorized in the wallet.')
   return session.account
+}
+
+/** Explicit opt-in to disposable unlocked Anvil accounts; never available on a public site/chain. */
+export async function connectLocalAccount(rpcUrl = import.meta.env?.VITE_RPC_URL?.trim() || chain.rpcUrls.default.http[0]): Promise<`0x${string}`> {
+  const loopback = ['127.0.0.1', 'localhost', '[::1]']
+  const url = new URL(rpcUrl)
+  if (chain.id !== 31337 || !loopback.includes(window.location.hostname) || !loopback.includes(url.hostname) || !['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+    throw new Error('Local test accounts require a loopback app and RPC on chain 31337.')
+  }
+  const allowed = new Set(['eth_accounts', 'eth_chainId', 'eth_sendTransaction', 'eth_estimateGas', 'eth_gasPrice', 'eth_maxPriorityFeePerGas', 'eth_getBlockByNumber', 'eth_getTransactionCount', 'eth_feeHistory', 'eth_getBalance', 'eth_call', 'eth_blockNumber', 'eth_getTransactionByHash', 'eth_getTransactionReceipt'])
+  let id = 0
+  const candidate: EthereumProvider = { request: async ({ method, params }) => {
+    if (!allowed.has(method)) throw new Error('Unsupported local test-wallet request.')
+    const response = await fetch(rpcUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: ++id, method, params: params || [] }), signal: AbortSignal.timeout(8000) })
+    if (!response.ok) throw new Error('Local RPC request failed. Start the local chain and retry.')
+    const payload = await response.json()
+    if (payload.error) throw Object.assign(new Error(payload.error.message || 'Local RPC request failed.'), { code: payload.error.code })
+    if (!Object.hasOwn(payload, 'result')) throw new Error('Local RPC returned an incomplete response.')
+    return payload.result
+  } }
+  if (await candidate.request({ method: 'eth_chainId' }) !== '0x7a69') throw new Error('Local RPC is on the wrong network; chain 31337 is required.')
+  const accounts = await candidate.request({ method: 'eth_accounts' })
+  if (!Array.isArray(accounts) || typeof accounts[0] !== 'string' || !isAddress(accounts[0])) throw new Error('No unlocked local test account is available.')
+  localProvider = candidate
+  return accounts[0]
 }
 
 export async function readWalletSession() {
@@ -92,7 +120,7 @@ function errorCode(error: unknown): number | undefined {
 export function getWalletClient(account: `0x${string}`) {
   const provider = getProvider()
   if (!provider) throw new Error('No wallet found.')
-  return createWalletClient({ account, chain, transport: custom(provider) })
+  return createWalletClient({ account, chain, transport: custom(provider, { retryCount: 0 }) })
 }
 
 export type FailureKind =

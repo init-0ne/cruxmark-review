@@ -12,7 +12,7 @@ import {
 } from './execution.ts'
 import { buildEvidenceReport, evaluateChecks, observedFault } from './evidence.ts'
 import {
-  assertWalletSession, connectAccount, errorMessage, explorerAddressUrl, explorerTxUrl,
+  assertWalletSession, connectAccount, connectLocalAccount, errorMessage, explorerAddressUrl, explorerTxUrl,
   getProvider, getWalletClient, readWalletSession, switchToSelectedChain,
 } from './wallet.ts'
 
@@ -55,6 +55,7 @@ export default function ExecutionPanel() {
       setBusy(null)
     }
     function accountsChanged(value: unknown) {
+      if (getProvider() !== provider) return
       if (!accountRef.current) return
       const next = Array.isArray(value) && typeof value[0] === 'string' && isAddress(value[0]) ? value[0] : undefined
       if (next?.toLowerCase() === accountRef.current.toLowerCase()) return
@@ -65,12 +66,13 @@ export default function ExecutionPanel() {
       setNotice({ tone: 'info', text: 'Wallet account changed. Reconnect to load that wallet’s isolated runs.' })
     }
     function chainChanged(value: unknown) {
+      if (getProvider() !== provider) return
       if (!accountRef.current) return
       invalidate()
       setChainOk(typeof value === 'string' && /^0x[0-9a-f]+$/i.test(value) && BigInt(value) === BigInt(chain.id))
       setNotice({ tone: 'info', text: 'Wallet network changed. Reconnect to reload verified runs.' })
     }
-    function disconnected() { invalidate(); accountRef.current = undefined; setAccount(undefined); setChainOk(false) }
+    function disconnected() { if (getProvider() !== provider) return; invalidate(); accountRef.current = undefined; setAccount(undefined); setChainOk(false) }
     provider.on('accountsChanged', accountsChanged)
     provider.on('chainChanged', chainChanged)
     provider.on('disconnect', disconnected)
@@ -107,9 +109,9 @@ export default function ExecutionPanel() {
     return client
   }
 
-  function connect() {
+  function connect(local = false) {
     void task('Connect wallet', async (current) => {
-      const owner = await connectAccount()
+      const owner = await (local ? connectLocalAccount() : connectAccount())
       current()
       const session = await readWalletSession()
       current()
@@ -274,10 +276,11 @@ export default function ExecutionPanel() {
       link.href = url; link.download = `cruxmark-${run.instance.slice(0, 10)}.json`
       document.body.appendChild(link); link.click(); link.remove()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setNotice({ tone: 'success', text: `${report.result === 'complete' ? 'Complete' : 'Partial'} evidence downloaded. Unexecuted checks remain explicitly incomplete.` })
+      setNotice({ tone: 'success', text: report.result === 'complete' ? 'Complete evidence downloaded. All 15 supported checks have matching recorded actions.' : 'Partial evidence downloaded. Unexecuted checks remain explicitly incomplete.' })
     } catch (error) { setNotice({ tone: 'error', text: errorMessage(error).slice(0, 350) }) }
   }
 
+  const localDemo = chain.id === 31337 && ['127.0.0.1', 'localhost', '[::1]'].includes(window.location.hostname)
   const disabled = !account || !chainOk || !run || !!busy || !!pending || recoveryBlocked
   const checks = evaluateChecks(records)
   const visibleChecks = checks.filter((item) => family === 'split' ? item.id.startsWith('split:') : family === 'price' ? /^(paused|stale|healthy|unavailable-price):/.test(item.id) : /^(down|grace|healthy|sequencer):/.test(item.id))
@@ -291,7 +294,7 @@ export default function ExecutionPanel() {
       <div className="exec-toolbar"><span className="mono">{chain.name} / {chain.id}</span><span className="example-pill">Controlled testnet sandbox</span></div>
       {!factoryAddress ? <div className="exec-results"><p className="exec-empty">{factoryConfigError || 'Execution deployment is not configured. The local setup guide below explains how to start the sandbox.'}</p><a className="text-link" href="#documentation">Open setup guide ↓</a></div> : <>
         <div className="exec-grid">
-          <div className="exec-step"><p className="mono exec-label">01 / CONNECT</p><h3>Your test wallet</h3><p>{chain.name}. Test ETH pays gas; collateral and debt are synthetic.</p><div className="exec-row"><button className="button button-primary" onClick={connect} disabled={!!busy || !!pending}>{account ? 'Reconnect wallet' : 'Connect wallet'}</button>{account && <span className="mono exec-account">{truncateAddress(account)}</span>}</div>{account && !chainOk && <button className="button button-small button-outline" disabled={!!busy || !!pending} onClick={() => { void task('Switch network', async () => { await switchToSelectedChain(); const session = await readWalletSession(); setChainOk(session.chainId === chain.id) }) }}>Switch to {chain.name}</button>}{chainOk && <p className="exec-hint">Wallet on selected test chain</p>}{chain.id !== 31337 && <a className="text-link" href={chain.id === 46630 ? 'https://faucet.testnet.chain.robinhood.com' : 'https://arbitrum.faucet.dev/'} target="_blank" rel="noreferrer">Get free test ETH ↗</a>}</div>
+          <div className="exec-step"><p className="mono exec-label">01 / CONNECT</p><h3>Your test wallet</h3><p>{chain.name}. Test ETH pays gas; collateral and debt are synthetic.</p><div className="exec-row"><button className="button button-primary" onClick={() => connect()} disabled={!!busy || !!pending}>{account ? 'Reconnect wallet' : 'Connect wallet'}</button>{localDemo && <button className="button button-small button-outline" onClick={() => connect(true)} disabled={!!busy || !!pending}>Use local test account</button>}{account && <span className="mono exec-account">{truncateAddress(account)}</span>}</div>{localDemo && <p className="exec-hint">The local option uses a disposable unlocked test account. No wallet installation or key import is needed.</p>}{account && !chainOk && <button className="button button-small button-outline" disabled={!!busy || !!pending} onClick={() => { void task('Switch network', async () => { await switchToSelectedChain(); const session = await readWalletSession(); setChainOk(session.chainId === chain.id) }) }}>Switch to {chain.name}</button>}{chainOk && <p className="exec-hint">Wallet on selected test chain</p>}{chain.id !== 31337 && <a className="text-link" href={chain.id === 46630 ? 'https://faucet.testnet.chain.robinhood.com' : 'https://arbitrum.faucet.dev/'} target="_blank" rel="noreferrer">Get free test ETH ↗</a>}</div>
           <div className="exec-step"><p className="mono exec-label">02 / SELECT</p><h3>Choose the fault family</h3><div className="exec-row"><select aria-label="Scenario family" value={family} disabled={!!busy || !!pending} onChange={(event) => setFamily(event.target.value as typeof family)}><option value="split">Stock split</option><option value="price">Unavailable price</option><option value="sequencer">Sequencer recovery</option></select></div><p>{family === 'split' ? 'An adjusted $100 price must stay $100 after a 2× split.' : family === 'price' ? 'Positive paused and stale prices must reject borrowing.' : 'Down and recovering inputs must reject borrowing until grace expires.'}</p></div>
           <div className="exec-step"><p className="mono exec-label">03 / ISOLATE</p><h3>Create a fresh run</h3><p>Your wallet alone controls this run’s faults.</p><div className="exec-row"><button className="button button-outline" onClick={create} disabled={!account || !chainOk || !!busy || !!pending || recoveryBlocked}>Create isolated run</button>{instances.length > 0 && <select aria-label="Owned scenario instance" value={run?.instance ?? ''} disabled={!!busy || !!pending} onChange={(event) => select(event.target.value as Address)}><option value="" disabled>Recent owned runs ({instances.length})</option>{instances.map((value) => <option value={value} key={value}>{truncateAddress(value)}</option>)}</select>}</div>{run && <p className="exec-address mono">Instance {explorerAddressUrl(run.instance) ? <a href={explorerAddressUrl(run.instance)} target="_blank" rel="noreferrer">{truncateAddress(run.instance)} ↗</a> : run.instance}</p>}</div>
         </div>
@@ -299,7 +302,7 @@ export default function ExecutionPanel() {
           <div className="exec-step"><p className="mono exec-label">04 / PREPARE</p><h3>100 tokens. Two consumers.</h3><p>Deposit identical synthetic collateral into the seeded unsafe and guarded versions.</p><div className="exec-row"><button className="button button-outline" onClick={deposit} disabled={disabled}>Prepare 100 tokens each</button><button className="button button-small button-outline" onClick={refresh} disabled={!run || !!busy || !!pending}>Refresh reads</button></div>{family !== 'split' && <p className="exec-hint">For repayment evidence: seed healthy inputs, borrow $1k guarded, then seed a fault and repay while pricing is blocked.</p>}</div>
           <div className="exec-step"><p className="mono exec-label">05 / STRESS</p><h3>Seed the controlled input</h3><div className="exec-actions">{(family === 'split' ? [1] : family === 'price' ? [2, 3] : [4, 5]).map((fault) => <button className="button button-small button-outline" key={fault} onClick={() => configure(fault as Fault)} disabled={disabled}>{faults[fault]}</button>)}<button className="button button-small button-outline" onClick={() => configure(0)} disabled={disabled}>{family === 'sequencer' ? 'Simulate post-grace control' : 'Restore healthy inputs'}</button></div><p className="exec-hint">Each seed clears other faults and uses chain time. Healthy refreshes the $100 mock price.{family === 'sequencer' && ' Post-grace sets a historical recovery timestamp; it does not wait an hour or interrupt the real sequencer.'}</p>{observed && <span className={`exec-badge ${observed === 'healthy' ? 'ok' : 'fault'}`}>Observed input: {observed}</span>}</div>
         </div>
-        <div className="exec-step exec-borrow"><p className="mono exec-label">06 / COMPARE</p><h3>Execute the same action through both paths</h3><div className="exec-actions">{family === 'split' ? <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_INCORRECT)}>Borrow $12k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_INCORRECT, 'BorrowExceedsCap')}>Test $12k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_CORRECT)}>Borrow $6k guarded control</button></> : <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_PROBE)}>Borrow $1k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE, priceError)}>Test $1k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE)}>Borrow $1k healthy control</button></>}<button className="button button-small button-outline" disabled={disabled} onClick={repay}>Repay all debt</button></div><p className="exec-hint">Rejection tests deliberately submit a reverted transaction after an exact guard check. Your wallet will ask to sign; this consumes test ETH for gas. A rejected signature verifies no check.</p></div>
+        <div className="exec-step exec-borrow"><p className="mono exec-label">06 / COMPARE</p><h3>Execute the same action through both paths</h3><div className="exec-actions">{family === 'split' ? <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_INCORRECT)}>Borrow $12k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_INCORRECT, 'BorrowExceedsCap')}>Test $12k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_CORRECT)}>Borrow $6k guarded control</button></> : <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_PROBE)}>Borrow $1k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE, priceError)}>Test $1k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE)}>Borrow $1k healthy control</button></>}<button className="button button-small button-outline" disabled={disabled} onClick={repay}>Repay all debt</button></div><p className="exec-hint">Rejection tests deliberately submit a reverted transaction after an exact guard check. This consumes test ETH for gas. Browser wallets ask to sign; the local option uses an unlocked test account. A rejected signature verifies no check.</p></div>
         <div className="exec-results">
           <div role="status" aria-live="polite" aria-atomic="true">{notice && <p className={`exec-notice ${notice.tone}`}>{busy && <span className="exec-spinner" aria-hidden="true" />}{notice.text}</p>}</div>
           {recoveryBlocked && <p className="exec-notice error">A saved transaction could not be restored. Reconnect to retry its chain reads; writes stay locked to prevent a duplicate.</p>}

@@ -16,25 +16,24 @@ pnpm run doctor
 pnpm run check
 ```
 
-Then run these in separate terminals:
+Start the local chain in its own terminal:
 
 ```sh
 pnpm run chain
 ```
 
-```sh
-pnpm run dev
-```
-
-Open the address printed by the web server. The landing page previews the three supported scenario families; its fault/guard comparisons show expectations, not executed results. The **Check connection** button reads the actual configured chain and block. Deploy the contract sandbox while the local chain is running:
+Deploy and verify the contract sandbox while that chain is running, then start the web app:
 
 ```sh
 pnpm run deploy:local
+pnpm run dev
 ```
+
+Open the address printed by the web server and choose **Use local test account** in the execution lab. This explicit local-only option uses a disposable unlocked Anvil account, so no wallet installation or key import is needed. Browser test wallets are also supported. The landing-page comparisons are labeled expectations; the lab reads actual inputs, submits transactions and downloads receipt-backed evidence. **Check connection** reads the configured chain and block.
 
 Foundry's Forge, Cast, and Anvil are pinned project dependencies with explicitly allowed installation scripts in `pnpm-workspace.yaml`. No global Foundry install, Docker, paid API, account, or funded wallet is needed for the local loop. The first contract build downloads the pinned Solidity compiler. Do not expose Anvil outside localhost; its accounts are public test accounts.
 
-`deploy:local` now verifies the factory and updates the public local settings in `.env.local`; restart the app afterward. Use `.env.example` for public network settings. All `VITE_*` settings are visible to browser users. Keep private keys out of environment files and use wallet signing or an encrypted Foundry keystore for public testnet transactions.
+`deploy:local` verifies the factory and updates the public local settings in `.env.local`; restart the app after redeploying. Use `.env.example` for public network settings. All `VITE_*` settings are visible to browser users. Keep private keys out of environment files and use wallet signing or an encrypted Foundry keystore for public testnet transactions.
 
 ## Where to start reading
 
@@ -56,7 +55,7 @@ Foundry's Forge, Cast, and Anvil are pinned project dependencies with explicitly
 | --- | --- |
 | `pnpm run dev` | Local web workspace |
 | `pnpm run build` | Strict TypeScript check and static production build |
-| `pnpm run check` | Web build, Solidity formatting check, contract tests |
+| `pnpm run check` | Web build, Solidity formatting, contract tests and real-EVM execution/evidence checks |
 | `pnpm run contracts:test` | Scenario, boundary, authorization, and fuzz checks |
 | `pnpm run contracts:format` | Format Solidity source |
 | `pnpm run execution:test` | Isolated real-EVM wallet/action/report regressions, no wallet secrets |
