@@ -63,6 +63,7 @@ Foundry's Forge, Cast, and Anvil are pinned project dependencies with explicitly
 | `pnpm run chain` | Local EVM, chain ID 31337 |
 | `pnpm run deploy:local` | Deploy and verify the isolated local factory; configure the local app |
 | `pnpm run deployment:verify --network <target>` | Verify live factory receipt/bytecode and write a source-linked manifest |
+| `pnpm run report:verify <report.json> [--rpc-url <url>] [--state]` | Re-check a downloaded evidence file against its chain: receipts, calldata, block hashes, events, factory bytecode and run ownership; `--state` also re-reads the recorded snapshots |
 
 For public deployment set `VITE_FACTORY_ADDRESS` to the verified factory address and restart/rebuild the app. The web build verifies that factory’s runtime hash against its compiled source before allowing scenario actions. Recompile/redeploy after contract changes.
 

@@ -136,6 +136,18 @@ function requestFor(run: RunContracts, action: Action) {
     : { address: run[action.consumer], abi: executionAbi, functionName: action.type, args: [action.amount] as const }
 }
 
+/**
+ * eth_call `action` as `owner` at `blockNumber`. The two branches are identical at runtime:
+ * viem types simulateContract on abi + functionName + args, so TypeScript cannot resolve the
+ * union of request shapes and each needs its own call.
+ */
+export function simulateAction(client: PublicClient, run: RunContracts, owner: Address, action: Action, blockNumber: bigint) {
+  const request = requestFor(run, action)
+  return request.functionName === 'configureScenario'
+    ? client.simulateContract({ ...request, account: owner, blockNumber })
+    : client.simulateContract({ ...request, account: owner, blockNumber })
+}
+
 export async function submitAction(client: PublicClient, wallet: WalletClient, owner: Address, run: RunContracts, action: Action, factoryCodeHash: Hash): Promise<PendingAction> {
   const chainId = wallet.chain?.id
   if (!chainId) throw new Error('Select an allowed test chain before signing.')
@@ -146,9 +158,7 @@ export async function submitAction(client: PublicClient, wallet: WalletClient, o
   const before = await readSnapshot(client, run, owner)
   const request = requestFor(run, action)
   try {
-    await (request.functionName === 'configureScenario'
-      ? client.simulateContract({ ...request, account: owner, blockNumber: before.block.number })
-      : client.simulateContract({ ...request, account: owner, blockNumber: before.block.number }))
+    await simulateAction(client, run, owner, action, before.block.number)
     if (action.type !== 'configure' && action.expectedError) throw new Error('Guard did not reject this input. Refresh the fault and retry; no transaction was sent.')
   } catch (error) {
     if (action.type === 'configure' || !action.expectedError || contractError(error) !== action.expectedError) throw error
@@ -187,9 +197,7 @@ export async function confirmAction(client: PublicClient, pending: PendingAction
   let replayError: GuardError | undefined
   if (receipt.status === 'reverted') {
     try {
-      await (request.functionName === 'configureScenario'
-        ? client.simulateContract({ ...request, account: pending.owner, blockNumber: receipt.blockNumber })
-        : client.simulateContract({ ...request, account: pending.owner, blockNumber: receipt.blockNumber }))
+      await simulateAction(client, pending.contracts, pending.owner, pending.action, receipt.blockNumber)
     } catch (error) {
       replayError = contractError(error)
     }

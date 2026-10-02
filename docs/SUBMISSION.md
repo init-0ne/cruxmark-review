@@ -19,7 +19,7 @@ This is a working preparation checklist, not a claim that Cruxmark is registered
 - [ ] Explain code written during the event using the actual commit history.
 - [ ] Fill factory/pool/token entries accurately, using N/A when the current implementation has none.
 - [ ] Select sponsor technology only when actually used. No fabricated USDG or issuer partnership.
-- [ ] Attach or retain a scoped evidence report and reproduction instructions.
+- [ ] Attach or retain a scoped evidence report, its reproduction instructions and the output of `pnpm run report:verify` against the public RPC.
 - [ ] Run the full checks and review outstanding limitations before freezing the demo.
 
 ## Recommended demo narrative

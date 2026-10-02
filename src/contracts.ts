@@ -16,6 +16,7 @@ export const instanceAbi = parseAbi([
   'function unsafeConsumer() view returns (address)',
   'function guardedConsumer() view returns (address)',
   'function configureScenario(uint8 fault)',
+  'event ScenarioConfigured(uint8 fault, uint256 timestamp)',
 ])
 export const consumerAbi = parseAbi([
   'function deposit(uint256 amount)',
@@ -29,6 +30,9 @@ export const consumerAbi = parseAbi([
   'error RepayExceedsDebt()',
   'error PriceUnavailable()',
   'error SequencerUnavailable()',
+  'event Deposited(address indexed user, uint256 amount)',
+  'event Borrowed(address indexed user, uint256 amount)',
+  'event Repaid(address indexed user, uint256 amount)',
 ])
 export const tokenAbi = parseAbi([
   'function uiMultiplier() view returns (uint256)',

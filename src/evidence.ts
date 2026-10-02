@@ -205,6 +205,7 @@ export function buildEvidenceReport(args: {
         ? `configureScenario(${action.fault}) on the owned instance; observed receipt ${receipt.status}.`
         : `${action.type}(${action.amount}) on ${action.consumer}; observed receipt ${receipt.status}.`),
       'Compare receipts, calldata, input timestamps and block hashes against this report. Unavailable-price and recovery outcomes depend on the recorded chain time.',
+      'Re-check this file against the chain: pnpm run report:verify <this-file> --rpc-url <RPC for the chain above>. Add --state with an RPC that still serves these blocks to also compare the recorded state snapshots and rejection reasons.',
     ],
   }
   if (!validateEvidenceReport(report)) throw new Error('Incomplete or inconsistent execution evidence; refresh confirmed reads before exporting.')

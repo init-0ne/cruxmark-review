@@ -4,11 +4,12 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
 import { createServer as createHttpServer } from 'node:http'
 import { createServer } from 'node:net'
 import { setTimeout as pause } from 'node:timers/promises'
-import { createPublicClient, createWalletClient, custom, http, InsufficientFundsError, keccak256, parseEventLogs } from 'viem'
+import { createPublicClient, createWalletClient, custom, encodeFunctionData, http, InsufficientFundsError, keccak256, parseEventLogs, toEventSelector } from 'viem'
 import { foundry } from 'viem/chains'
-import { factoryAbi, BORROW_CORRECT, BORROW_INCORRECT, BORROW_PROBE, DEPOSIT_AMOUNT } from '../src/contracts.ts'
+import { executionAbi, factoryAbi, BORROW_CORRECT, BORROW_INCORRECT, BORROW_PROBE, DEPOSIT_AMOUNT } from '../src/contracts.ts'
 import { actionOutcome, confirmAction, encodeSubmission, guardMessages, restoreSubmission, loadOwnedRuns, loadRun, readSnapshot, submitAction, SupersededTransactionError, verifyFactory } from '../src/execution.ts'
 import { buildEvidenceReport, nextLabStep, observedFault, serialize, validateEvidenceReport } from '../src/evidence.ts'
+import { verifyReportOnChain } from '../src/verification.ts'
 import { assertWalletSession, connectLocalAccount, classifyError, getProvider, readWalletSession, switchToSelectedChain } from '../src/wallet.ts'
 
 function labSnapshot(fault, debt = 0n) {
@@ -202,6 +203,88 @@ try {
   const partial = buildEvidenceReport({ owner, contracts: run, chainId: 31337, chainName: 'Local', source, snapshot, actions: records.slice(0, 1) })
   assert.equal(partial.result, 'partial')
   bad((r) => { r.checks[0].status = 'incomplete' })
+  // Independent verification re-reads the chain: an honest report passes, and reports that are
+  // internally consistent but untrue do not.
+  const outline = (findings) => findings.map((item) => `${item.check}:${item.status}`)
+  const honest = await verifyReportOnChain(client, structuredClone(report), { state: true })
+  assert.deepEqual(outline(honest), ['RPC chain:pass', 'Factory bytecode:pass', 'Run ownership:pass', 'Transactions:pass', 'Blocks:pass', 'Events:pass', 'State snapshots:pass'], JSON.stringify(honest))
+  async function untrue(edit, ...checks) {
+    const copy = structuredClone(report)
+    edit(copy)
+    assert(validateEvidenceReport(copy), `${checks}: the tampered report must still be internally consistent`)
+    const findings = await verifyReportOnChain(client, copy, { state: true })
+    for (const check of checks) assert(findings.some((item) => item.check === check && item.status === 'fail'), `${check} was not detected: ${JSON.stringify(findings)}`)
+  }
+  const rehash = (r, from, to) => {
+    for (const item of r.actions) if (item.hash === from) { item.hash = to; item.receipt.hash = to }
+    for (const item of r.checks) item.transactionHashes = item.transactionHashes.map((value) => (value === from ? to : value))
+  }
+  await untrue((r) => rehash(r, r.actions[0].hash, deploymentHash), 'Transactions')
+  await untrue((r) => { const fake = `0x${'cd'.repeat(32)}`; r.actions[3].receipt.block.hash = fake; r.actions[3].after.block.hash = fake }, 'Blocks', 'Transactions')
+  await untrue((r) => { r.actions[0].receipt.status = 'reverted' }, 'Transactions')
+  await untrue((r) => { r.run.owner = other; r.run.id = `31337:${r.run.contracts.instance.toLowerCase()}:${other.toLowerCase()}`; for (const item of r.actions) { item.owner = other; item.receipt.from = other } }, 'Run ownership')
+  // A contract that looks like a run (same owner, same getters) but was never created by the factory.
+  const instanceArtifact = JSON.parse(readFileSync('contracts/out/ScenarioFactory.sol/ScenarioInstance.json', 'utf8'))
+  const lookalikeHash = await wallet.deployContract({ account: owner, abi: instanceArtifact.abi, bytecode: instanceArtifact.bytecode.object, args: [owner] })
+  const lookalike = await loadRun(client, factory, (await client.waitForTransactionReceipt({ hash: lookalikeHash })).contractAddress, owner)
+  await untrue((r) => {
+    r.run.contracts = structuredClone(lookalike)
+    r.run.id = `31337:${lookalike.instance.toLowerCase()}:${owner.toLowerCase()}`
+    for (const item of r.actions) { item.contracts = structuredClone(lookalike); item.receipt.to = item.action.type === 'configure' ? lookalike.instance : lookalike[item.action.consumer] }
+  }, 'Run ownership')
+  // An RPC that lies about who sent a transaction, what it carried, or where it went.
+  const lying = (field, value) => new Proxy(client, { get(target, key) { return key === 'getTransaction' ? async (request) => ({ ...(await target.getTransaction(request)), [field]: value }) : target[key] } })
+  for (const [field, value] of [['from', other], ['value', 1n], ['to', other], ['input', '0x']]) {
+    assert((await verifyReportOnChain(lying(field, value), structuredClone(report))).some((item) => item.check === 'Transactions' && item.status === 'fail'), `a lying RPC (${field}) must not verify`)
+  }
+  await untrue((r) => { r.source.factoryCodeHash = `0x${'ef'.repeat(32)}` }, 'Factory bytecode')
+  await untrue((r) => { const forged = 99n * 10n ** 18n; r.actions[0].action.amount = forged.toString(); r.actions[0].receipt.data = encodeFunctionData({ abi: executionAbi, functionName: 'deposit', args: [forged] }) }, 'Events')
+  const wrongChain = (r) => { r.chain.id = 421614; r.run.id = `421614:${r.run.contracts.instance.toLowerCase()}:${r.run.owner.toLowerCase()}`; for (const item of r.actions) item.chainId = 421614 }
+  await untrue(wrongChain, 'RPC chain')
+  const elsewhere = structuredClone(report)
+  wrongChain(elsewhere)
+  assert.equal((await verifyReportOnChain(client, elsewhere, { state: true })).length, 1, 'on the wrong chain nothing else is meaningful, so no misleading follow-up findings')
+  await untrue((r) => { const later = (BigInt(r.actions[0].receipt.block.timestamp) + 1n).toString(); r.actions[0].receipt.block.timestamp = later; r.actions[0].after.block.timestamp = later }, 'Blocks')
+  await untrue((r) => { r.run.contracts.price = otherRun.price; for (const item of r.actions) item.contracts.price = otherRun.price }, 'Run ownership')
+  await untrue((r) => { r.observations.guarded.collateral = '1' }, 'State snapshots')
+  const tamperedState = structuredClone(report)
+  tamperedState.observations.guarded.collateral = '1'
+  assert.deepEqual(outline(await verifyReportOnChain(client, tamperedState)).slice(-1), ['State snapshots:skipped'], 'state is opt-in: without it the limitation is stated, not hidden')
+  // An RPC that has pruned old state makes snapshots unverifiable, never a mismatch.
+  const pruned = new Proxy(client, { get(target, key) { return key === 'readContract' ? async (request) => { if (request.blockNumber !== undefined) throw new Error('missing trie node'); return target.readContract(request) } : target[key] } })
+  assert.deepEqual(outline(await verifyReportOnChain(pruned, structuredClone(report), { state: true })).slice(-4), ['Transactions:pass', 'Blocks:pass', 'Events:pass', 'State snapshots:skipped'])
+  // An RPC that rewrites receipts: wrong event, extra log, or logs on a revert.
+  const rewriting = (edit) => new Proxy(client, { get(target, key) { return key === 'getTransactionReceipt' ? async (request) => edit(await target.getTransactionReceipt(request)) : target[key] } })
+  const sampleLog = (await client.getTransactionReceipt({ hash: records[0].hash })).logs[0]
+  const repaid = toEventSelector('event Repaid(address indexed user, uint256 amount)')
+  for (const [label, edit] of [
+    // Only consumer events share Repaid's layout (indexed user), so the name alone differs; configure logs would merely fail to decode.
+    ['a log naming a different event', (r) => (r.status === 'success' && r.logs[0].topics.length === 2 ? { ...r, logs: r.logs.map((log) => ({ ...log, topics: [repaid, ...log.topics.slice(1)] })) } : r)],
+    ['an extra log', (r) => (r.status === 'success' ? { ...r, logs: [...r.logs, ...r.logs] } : r)],
+    ['logs on a reverted transaction', (r) => (r.status === 'reverted' ? { ...r, logs: [sampleLog] } : r)],
+  ]) {
+    assert((await verifyReportOnChain(rewriting(edit), structuredClone(report))).some((item) => item.check === 'Events' && item.status === 'fail'), `${label} must not verify`)
+  }
+  // The rejection reason is re-derived from the chain, whatever the report says.
+  const misreported = structuredClone(report)
+  misreported.actions.find((item) => item.replayError === 'PriceUnavailable').replayError = 'SequencerUnavailable'
+  assert.match((await verifyReportOnChain(client, misreported, { state: true })).at(-1).detail, /replays as PriceUnavailable, the report says SequencerUnavailable/)
+  // Infrastructure trouble is never reported as a mismatch: a replay that fails for a non-guard reason is skipped,
+  // and an RPC fault while looking a transaction up propagates instead of reading as "not on this chain".
+  const noReplay = new Proxy(client, { get(target, key) { return key === 'simulateContract' ? async () => { throw new Error('RPC unavailable') } : target[key] } })
+  assert.deepEqual(outline(await verifyReportOnChain(noReplay, structuredClone(report), { state: true })).slice(-1), ['State snapshots:skipped'])
+  const flaky = new Proxy(client, { get(target, key) { return key === 'getTransactionReceipt' ? async () => { throw new Error('RPC unavailable') } : target[key] } })
+  await assert.rejects(verifyReportOnChain(flaky, structuredClone(report)), /RPC unavailable/)
+  // The CLI end to end, against the same chain.
+  const cliArgs = (file) => ['scripts/verify-report.mjs', file, '--rpc-url', `http://127.0.0.1:${port}`, '--state']
+  writeFileSync('work/verification/cli-report.json', JSON.stringify(report))
+  const cli = execFileSync(process.execPath, cliArgs('work/verification/cli-report.json'), { encoding: 'utf8' })
+  assert.match(cli, /VERIFIED against this RPC\./)
+  assert.equal([...cli.matchAll(/^✓ /gm)].length, 8, cli)
+  writeFileSync('work/verification/cli-tampered.json', JSON.stringify(tamperedState))
+  assert.throws(() => execFileSync(process.execPath, cliArgs('work/verification/cli-tampered.json'), { encoding: 'utf8', stdio: 'pipe' }), (error) => error.status === 1 && /NOT VERIFIED/.test(error.stdout) && /✗ State snapshots/.test(error.stdout))
+  writeFileSync('work/verification/cli-garbage.json', JSON.stringify({ schemaVersion: 'cruxmark-evidence/2' }))
+  assert.throws(() => execFileSync(process.execPath, cliArgs('work/verification/cli-garbage.json'), { encoding: 'utf8', stdio: 'pipe' }), (error) => error.status === 1 && /not a consistent/.test(error.stdout))
   const exact = 123456789012345678901234567890n
   assert.equal(BigInt(serialize({ amount: exact }).amount), exact)
   await assert.rejects(Promise.resolve().then(() => buildEvidenceReport({ owner, contracts: run, chainId: 31337, chainName: 'Local', source, snapshot, actions: [] })))
@@ -264,7 +347,7 @@ try {
 
   mkdirSync('work/verification', { recursive: true })
   writeFileSync('work/verification/local-evidence.json', JSON.stringify(report, null, 2) + '\n')
-  console.log(`Execution checks passed: ${records.length} confirmed actions, 15 verified coverage checks, exact guard replays, independent owners, strict evidence rejection, wallet identity checks and real-error failure descriptions.`)
+  console.log(`Execution checks passed: ${records.length} confirmed actions, 15 verified coverage checks, exact guard replays, independent owners, strict evidence rejection, wallet identity checks, real-error failure descriptions and independent on-chain report verification.`)
 } finally {
   node.kill('SIGTERM')
   await new Promise((resolve) => node.exitCode !== null ? resolve() : node.once('exit', resolve))
