@@ -45,6 +45,8 @@ export interface ConfirmedAction extends PendingAction {
   replayError?: GuardError
 }
 
+export class SupersededTransactionError extends Error {}
+
 export function contractError(error: unknown): GuardError | undefined {
   if (!(error instanceof BaseError)) return undefined
   const cause = error.walk((item) => item instanceof ContractFunctionRevertedError)
@@ -163,7 +165,7 @@ export async function confirmAction(client: PublicClient, pending: PendingAction
   const data = encodeFunctionData(request)
   const transaction = await client.getTransaction({ hash: receipt.transactionHash })
   if (transaction.from.toLowerCase() !== pending.owner.toLowerCase() || transaction.to?.toLowerCase() !== request.address.toLowerCase() || transaction.input !== data || transaction.value !== 0n) {
-    throw new Error('Transaction was replaced with a different action. No scenario result recorded.')
+    throw new SupersededTransactionError('Transaction was replaced with a different action. No scenario result recorded; refresh before retrying.')
   }
   const after = await readSnapshot(client, pending.contracts, pending.owner, receipt.blockNumber)
   if (after.block.hash !== receipt.blockHash) throw new Error('Receipt block changed. Refresh confirmation before exporting.')
@@ -189,4 +191,34 @@ export function actionOutcome(record: ConfirmedAction): 'confirmed' | 'blocked' 
     return receipt.status === 'reverted' && record.replayError === action.expectedError ? 'blocked' : 'unexpected'
   }
   return receipt.status === 'success' ? 'confirmed' : 'unexpected'
+}
+
+export type Submission = { type: 'action'; value: PendingAction } | { type: 'create'; hash: Hash; owner: Address; chainId: number }
+export function encodeSubmission(submission: Submission): string {
+  return JSON.stringify(submission.type === 'create' ? submission : {
+    type: 'action', value: { ...submission.value, before: undefined, beforeBlock: submission.value.before.block.number.toString() },
+  }, (_, value) => typeof value === 'bigint' ? value.toString() : value)
+}
+
+/** Restore only signing metadata; reconstruct the observation from the chain. Never broadcast here. */
+export async function restoreSubmission(client: PublicClient, raw: string, owner: Address, factory: Address, chainId: number, codeHash: Hash): Promise<Submission> {
+  await verifyFactory(client, factory, chainId, codeHash)
+  const submission = JSON.parse(raw)
+  const saved = submission.type === 'create' ? submission : submission.type === 'action' ? submission.value : undefined
+  if (!saved || !/^0x[0-9a-f]{64}$/i.test(saved.hash) || saved.chainId !== chainId || saved.owner?.toLowerCase() !== owner.toLowerCase()) throw new Error('Saved confirmation belongs to a different wallet or chain.')
+  if (submission.type === 'create') return { type: 'create', hash: saved.hash, owner, chainId }
+  const contracts = await loadRun(client, factory, saved.contracts.instance, owner)
+  if (Object.keys(contracts).some((key) => contracts[key as keyof RunContracts].toLowerCase() !== saved.contracts[key]?.toLowerCase())) throw new Error('Saved confirmation contract addresses do not match the owned run.')
+  if (typeof saved.beforeBlock !== 'string' || !/^\d+$/.test(saved.beforeBlock)) throw new Error('Saved confirmation block is invalid.')
+  const action = saved.action as Action
+  if (action.type === 'configure') {
+    if (!Number.isInteger(action.fault) || action.fault < 0 || action.fault > 5) throw new Error('Saved fault is invalid.')
+  } else {
+    const amount = (saved.action as { amount: unknown }).amount
+    if (!['deposit', 'borrow', 'repay'].includes(action.type) || !['unsafe', 'guarded'].includes(action.consumer) || typeof amount !== 'string' || !/^[1-9]\d*$/.test(amount)) throw new Error('Saved action is invalid.')
+    action.amount = BigInt(amount)
+    if (action.expectedError && (action.type !== 'borrow' || !['BorrowExceedsCap', 'PriceUnavailable', 'SequencerUnavailable'].includes(action.expectedError))) throw new Error('Saved guard expectation is invalid.')
+  }
+  const before = await readSnapshot(client, contracts, owner, BigInt(saved.beforeBlock))
+  return { type: 'action', value: { hash: saved.hash, chainId, owner, contracts, action, before } }
 }

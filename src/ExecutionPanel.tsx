@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { isAddress, parseEventLogs, type Address, type Hash } from 'viem'
+import { encodeFunctionData, isAddress, parseEventLogs, type Address, type Hash } from 'viem'
 import { chain, getPublicClient } from './chains.ts'
 import { buildInfo } from './buildInfo.ts'
 import {
@@ -7,8 +7,8 @@ import {
   factoryAbi, factoryAddress, factoryConfigError, formatUsd18, truncateAddress,
 } from './contracts.ts'
 import {
-  actionOutcome, confirmAction, faults, loadOwnedRuns, loadRun, readSnapshot, submitAction, verifyFactory,
-  type Action, type ConfirmedAction, type Fault, type PendingAction, type RunContracts, type Snapshot,
+  actionOutcome, confirmAction, encodeSubmission, faults, loadOwnedRuns, loadRun, readSnapshot, restoreSubmission, submitAction, SupersededTransactionError, verifyFactory,
+  type Action, type ConfirmedAction, type Fault, type RunContracts, type Snapshot, type Submission,
 } from './execution.ts'
 import { buildEvidenceReport, evaluateChecks, observedFault } from './evidence.ts'
 import {
@@ -16,7 +16,6 @@ import {
   getProvider, getWalletClient, readWalletSession, switchToSelectedChain,
 } from './wallet.ts'
 
-type Pending = { type: 'action'; value: PendingAction } | { type: 'create'; hash: Hash; owner: Address }
 interface Notice { tone: 'info' | 'success' | 'error'; text: string }
 
 export default function ExecutionPanel() {
@@ -28,13 +27,24 @@ export default function ExecutionPanel() {
   const [run, setRun] = useState<RunContracts>()
   const [snapshot, setSnapshot] = useState<Snapshot>()
   const [records, setRecords] = useState<ConfirmedAction[]>([])
-  const [pending, setPending] = useState<Pending>()
+  const [pending, setPending] = useState<Submission>()
+  const [recoveryBlocked, setRecoveryBlocked] = useState(false)
   const [family, setFamily] = useState<'split' | 'price' | 'sequencer'>('split')
   const lock = useRef(false)
   const epoch = useRef(0)
   const accountRef = useRef<Address | undefined>(undefined)
 
-  function clearRun() { setRun(undefined); setSnapshot(undefined); setRecords([]); setInstances([]); setPending(undefined) }
+  function clearRun() { setRun(undefined); setSnapshot(undefined); setRecords([]); setInstances([]); setPending(undefined); setRecoveryBlocked(false) }
+  function pendingKey(owner: Address) { return `cruxmark:pending:1:${chain.id}:${factoryAddress}:${owner.toLowerCase()}` }
+  function saveSubmission(value: Submission) {
+    const owner = value.type === 'create' ? value.owner : value.value.owner
+    try { localStorage.setItem(pendingKey(owner), encodeSubmission(value)) }
+    catch { setNotice({ tone: 'info', text: 'Browser storage is unavailable. Keep this tab open until confirmation completes.' }) }
+  }
+  function clearSubmission(owner: Address) {
+    setPending(undefined)
+    try { localStorage.removeItem(pendingKey(owner)) } catch { /* Storage may be disabled. */ }
+  }
   useEffect(() => {
     const provider = getProvider()
     if (!provider?.on) return
@@ -81,7 +91,10 @@ export default function ExecutionPanel() {
     setNotice({ tone: 'info', text: label + '…' })
     try { await work(assertCurrent) }
     catch (error) {
-      if (generation === epoch.current) setNotice({ tone: 'error', text: errorMessage(error).slice(0, 350) })
+      if (generation === epoch.current) {
+        if (error instanceof SupersededTransactionError && accountRef.current) { clearSubmission(accountRef.current); setSnapshot(undefined) }
+        setNotice({ tone: 'error', text: errorMessage(error).slice(0, 350) })
+      }
     } finally {
       if (generation === epoch.current) { lock.current = false; setBusy(null) }
     }
@@ -109,6 +122,17 @@ export default function ExecutionPanel() {
       const list = await loadOwnedRuns(client, factoryAddress!, owner)
       current()
       setInstances(list)
+      let saved: string | null = null
+      try { saved = localStorage.getItem(pendingKey(owner)) } catch { /* In-memory confirmation still works. */ }
+      if (saved) {
+        setRecoveryBlocked(true)
+        const restored = await restoreSubmission(client, saved, owner, factoryAddress!, chain.id, buildInfo.factoryCodeHash)
+        current()
+        setPending(restored); setRecoveryBlocked(false)
+        if (restored.type === 'action') { setRun(restored.value.contracts); setSnapshot(restored.value.before) }
+        setNotice({ tone: 'info', text: 'Recovered a submitted transaction. Retry confirmation before sending another action.' })
+        return
+      }
       setNotice({ tone: 'success', text: 'Wallet and factory verified. Choose a scenario family and create a fresh run.' })
     })
   }
@@ -116,27 +140,31 @@ export default function ExecutionPanel() {
   async function finishCreate(client: Awaited<ReturnType<typeof getPublicClient>>, hash: Hash, owner: Address, current: () => void) {
     const receipt = await client.waitForTransactionReceipt({ hash, timeout: 90_000, pollingInterval: 1500 })
     current()
-    if (receipt.status !== 'success') { setPending(undefined); throw new Error('Scenario creation reverted. No run created.') }
+    const transaction = await client.getTransaction({ hash: receipt.transactionHash })
+    if (transaction.from.toLowerCase() !== owner.toLowerCase() || transaction.to?.toLowerCase() !== factoryAddress?.toLowerCase() || transaction.input !== encodeFunctionData({ abi: factoryAbi, functionName: 'createScenario' }) || transaction.value !== 0n) throw new SupersededTransactionError('Creation transaction was replaced by a different action. No run accepted; retry from the current state.')
+    if (receipt.status !== 'success') { clearSubmission(owner); throw new Error('Scenario creation reverted. No run created.') }
     const event = parseEventLogs({ abi: factoryAbi, logs: receipt.logs, eventName: 'ScenarioCreated' }).find((item) => item.address.toLowerCase() === factoryAddress?.toLowerCase() && item.args.owner.toLowerCase() === owner.toLowerCase())
     if (!event) throw new Error('Creation receipt has no matching scenario event. No run accepted.')
     const contracts = await loadRun(client, factoryAddress!, event.args.instance, owner)
     const observed = await readSnapshot(client, contracts, owner)
     const list = await loadOwnedRuns(client, factoryAddress!, owner)
     current()
-    setRun(contracts); setSnapshot(observed); setRecords([]); setInstances(list); setPending(undefined)
+    setRun(contracts); setSnapshot(observed); setRecords([]); setInstances(list); clearSubmission(owner)
     setNotice({ tone: 'success', text: 'Fresh isolated run created and verified. Deposit collateral, then seed the chosen fault.' })
   }
 
   function create() {
-    if (!account || pending) return
+    if (!account || pending || recoveryBlocked) return
     void task('Create isolated run', async (current) => {
       await assertWalletSession(account)
       const client = await verifiedClient()
       await client.simulateContract({ address: factoryAddress!, abi: factoryAbi, functionName: 'createScenario', account })
       current()
       const hash = await getWalletClient(account).writeContract({ address: factoryAddress!, abi: factoryAbi, functionName: 'createScenario', account, chain })
+      const submitted = { type: 'create' as const, hash, owner: account, chainId: chain.id }
+      saveSubmission(submitted)
       current()
-      setPending({ type: 'create', hash, owner: account })
+      setPending(submitted)
       setNotice({ tone: 'info', text: 'Creation submitted. Waiting for its receipt; do not create a duplicate.' })
       await finishCreate(client, hash, account, current)
     })
@@ -162,12 +190,13 @@ export default function ExecutionPanel() {
     const client = await verifiedClient()
     current()
     const submitted = await submitAction(client, getWalletClient(account), account, run, action, buildInfo.factoryCodeHash)
+    saveSubmission({ type: 'action', value: submitted })
     current()
     setPending({ type: 'action', value: submitted })
     setNotice({ tone: 'info', text: 'Transaction submitted. Waiting for the receipt; further writes are locked.' })
     const confirmed = await confirmAction(client, submitted)
     current()
-    setRecords((previous) => [...previous, confirmed]); setSnapshot(confirmed.after); setPending(undefined)
+    setRecords((previous) => [...previous, confirmed]); setSnapshot(confirmed.after); clearSubmission(account)
     const result = actionOutcome(confirmed)
     setNotice(result === 'blocked'
       ? { tone: 'success', text: `Borrow reverted on chain. Same-block replay decoded ${confirmed.replayError}; debt stayed ${formatUsd18(confirmed.after.guarded.debt)}.` }
@@ -224,7 +253,7 @@ export default function ExecutionPanel() {
       if (pending?.type === 'action') {
         const confirmed = await confirmAction(client, pending.value)
         current()
-        setRecords((previous) => [...previous, confirmed]); setSnapshot(confirmed.after); setPending(undefined)
+        setRecords((previous) => [...previous, confirmed]); setSnapshot(confirmed.after); clearSubmission(pending.value.owner)
         setNotice({ tone: actionOutcome(confirmed) === 'unexpected' ? 'error' : 'success', text: 'Receipt confirmed. The recorded outcome is ' + actionOutcome(confirmed) + '.' })
         return
       }
@@ -249,7 +278,7 @@ export default function ExecutionPanel() {
     } catch (error) { setNotice({ tone: 'error', text: errorMessage(error).slice(0, 350) }) }
   }
 
-  const disabled = !account || !chainOk || !run || !!busy || !!pending
+  const disabled = !account || !chainOk || !run || !!busy || !!pending || recoveryBlocked
   const checks = evaluateChecks(records)
   const visibleChecks = checks.filter((item) => family === 'split' ? item.id.startsWith('split:') : family === 'price' ? /^(paused|stale|healthy|unavailable-price):/.test(item.id) : /^(down|grace|healthy|sequencer):/.test(item.id))
   const observed = snapshot ? observedFault(snapshot) : undefined
@@ -264,7 +293,7 @@ export default function ExecutionPanel() {
         <div className="exec-grid">
           <div className="exec-step"><p className="mono exec-label">01 / CONNECT</p><h3>Your test wallet</h3><p>{chain.name}. Test ETH pays gas; collateral and debt are synthetic.</p><div className="exec-row"><button className="button button-primary" onClick={connect} disabled={!!busy || !!pending}>{account ? 'Reconnect wallet' : 'Connect wallet'}</button>{account && <span className="mono exec-account">{truncateAddress(account)}</span>}</div>{account && !chainOk && <button className="button button-small button-outline" disabled={!!busy || !!pending} onClick={() => { void task('Switch network', async () => { await switchToSelectedChain(); const session = await readWalletSession(); setChainOk(session.chainId === chain.id) }) }}>Switch to {chain.name}</button>}{chainOk && <p className="exec-hint">Wallet on selected test chain</p>}{chain.id !== 31337 && <a className="text-link" href={chain.id === 46630 ? 'https://faucet.testnet.chain.robinhood.com' : 'https://arbitrum.faucet.dev/'} target="_blank" rel="noreferrer">Get free test ETH ↗</a>}</div>
           <div className="exec-step"><p className="mono exec-label">02 / SELECT</p><h3>Choose the fault family</h3><div className="exec-row"><select aria-label="Scenario family" value={family} disabled={!!busy || !!pending} onChange={(event) => setFamily(event.target.value as typeof family)}><option value="split">Stock split</option><option value="price">Unavailable price</option><option value="sequencer">Sequencer recovery</option></select></div><p>{family === 'split' ? 'An adjusted $100 price must stay $100 after a 2× split.' : family === 'price' ? 'Positive paused and stale prices must reject borrowing.' : 'Down and recovering inputs must reject borrowing until grace expires.'}</p></div>
-          <div className="exec-step"><p className="mono exec-label">03 / ISOLATE</p><h3>Create a fresh run</h3><p>Your wallet alone controls this run’s faults.</p><div className="exec-row"><button className="button button-outline" onClick={create} disabled={!account || !chainOk || !!busy || !!pending}>Create isolated run</button>{instances.length > 0 && <select aria-label="Owned scenario instance" value={run?.instance ?? ''} disabled={!!busy || !!pending} onChange={(event) => select(event.target.value as Address)}><option value="" disabled>Recent owned runs ({instances.length})</option>{instances.map((value) => <option value={value} key={value}>{truncateAddress(value)}</option>)}</select>}</div>{run && <p className="exec-address mono">Instance {explorerAddressUrl(run.instance) ? <a href={explorerAddressUrl(run.instance)} target="_blank" rel="noreferrer">{truncateAddress(run.instance)} ↗</a> : run.instance}</p>}</div>
+          <div className="exec-step"><p className="mono exec-label">03 / ISOLATE</p><h3>Create a fresh run</h3><p>Your wallet alone controls this run’s faults.</p><div className="exec-row"><button className="button button-outline" onClick={create} disabled={!account || !chainOk || !!busy || !!pending || recoveryBlocked}>Create isolated run</button>{instances.length > 0 && <select aria-label="Owned scenario instance" value={run?.instance ?? ''} disabled={!!busy || !!pending} onChange={(event) => select(event.target.value as Address)}><option value="" disabled>Recent owned runs ({instances.length})</option>{instances.map((value) => <option value={value} key={value}>{truncateAddress(value)}</option>)}</select>}</div>{run && <p className="exec-address mono">Instance {explorerAddressUrl(run.instance) ? <a href={explorerAddressUrl(run.instance)} target="_blank" rel="noreferrer">{truncateAddress(run.instance)} ↗</a> : run.instance}</p>}</div>
         </div>
         <div className="exec-grid">
           <div className="exec-step"><p className="mono exec-label">04 / PREPARE</p><h3>100 tokens. Two consumers.</h3><p>Deposit identical synthetic collateral into the seeded unsafe and guarded versions.</p><div className="exec-row"><button className="button button-outline" onClick={deposit} disabled={disabled}>Prepare 100 tokens each</button><button className="button button-small button-outline" onClick={refresh} disabled={!run || !!busy || !!pending}>Refresh reads</button></div>{family !== 'split' && <p className="exec-hint">For repayment evidence: seed healthy inputs, borrow $1k guarded, then seed a fault and repay while pricing is blocked.</p>}</div>
@@ -273,6 +302,7 @@ export default function ExecutionPanel() {
         <div className="exec-step exec-borrow"><p className="mono exec-label">06 / COMPARE</p><h3>Execute the same action through both paths</h3><div className="exec-actions">{family === 'split' ? <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_INCORRECT)}>Borrow $12k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_INCORRECT, 'BorrowExceedsCap')}>Test $12k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_CORRECT)}>Borrow $6k guarded control</button></> : <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_PROBE)}>Borrow $1k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE, priceError)}>Test $1k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE)}>Borrow $1k healthy control</button></>}<button className="button button-small button-outline" disabled={disabled} onClick={repay}>Repay all debt</button></div><p className="exec-hint">Rejection tests deliberately submit a reverted transaction after an exact guard check. Your wallet will ask to sign; this consumes test ETH for gas. A rejected signature verifies no check.</p></div>
         <div className="exec-results">
           <div role="status" aria-live="polite" aria-atomic="true">{notice && <p className={`exec-notice ${notice.tone}`}>{busy && <span className="exec-spinner" aria-hidden="true" />}{notice.text}</p>}</div>
+          {recoveryBlocked && <p className="exec-notice error">A saved transaction could not be restored. Reconnect to retry its chain reads; writes stay locked to prevent a duplicate.</p>}
           {pendingHash && <div className="exec-pending"><p>Submitted transaction {explorerTxUrl(pendingHash) ? <a href={explorerTxUrl(pendingHash)} target="_blank" rel="noreferrer">{truncateAddress(pendingHash)} ↗</a> : <span className="mono">{pendingHash}</span>}. Confirmation is incomplete; no result is counted.</p><button className="button button-small button-outline" disabled={!!busy} onClick={refresh}>Retry confirmation</button></div>}
           {snapshot ? <><p className="exec-hint mono">OBSERVED BLOCK {snapshot.block.number.toString()} · CHAIN TIME {snapshot.block.timestamp.toString()}</p><div className="exec-values">{(['unsafe', 'guarded'] as const).map((consumer) => <div key={consumer}><span>{consumer === 'unsafe' ? 'Seeded unsafe' : 'Guarded'} value</span><strong>{snapshot[consumer].value === undefined ? 'Blocked' : formatUsd18(snapshot[consumer].value!)}</strong><small>{snapshot[consumer].error || `Cap ${formatUsd18(snapshot[consumer].cap!)}`}</small><small>Debt {formatUsd18(snapshot[consumer].debt)} · Collateral {(snapshot[consumer].collateral / 10n ** 18n).toString()} tokens</small></div>)}<div><span>Input evidence</span><small className="mono">price {snapshot.inputs.price.answer.toString()} / {snapshot.inputs.priceDecimals} decimals<br />updated {snapshot.inputs.price.updatedAt.toString()}<br />multiplier {snapshot.inputs.multiplier.toString()}<br />paused {String(snapshot.inputs.paused)}<br />sequencer {snapshot.inputs.sequencer.status.toString()} / started {snapshot.inputs.sequencer.startedAt.toString()}</small></div></div></> : <p className="exec-empty">Create or select an owned run to read inputs and positions. Results appear only after real contract reads.</p>}
           <div className="exec-checks"><p className="mono exec-label">OBSERVED COVERAGE · {visibleChecks.filter((item) => item.status === 'verified').length}/{visibleChecks.length}</p><ul>{visibleChecks.map((item) => <li key={item.id}><span className={`exec-badge ${item.status === 'verified' ? 'ok' : ''}`}>{item.status === 'verified' ? 'Verified' : 'Not executed'}</span><span>{item.id.split(': ')[1]}</span></li>)}</ul></div>

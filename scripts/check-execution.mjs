@@ -6,7 +6,7 @@ import { setTimeout as pause } from 'node:timers/promises'
 import { createPublicClient, createWalletClient, http, keccak256, parseEventLogs } from 'viem'
 import { foundry } from 'viem/chains'
 import { factoryAbi, BORROW_CORRECT, BORROW_INCORRECT, BORROW_PROBE, DEPOSIT_AMOUNT } from '../src/contracts.ts'
-import { actionOutcome, confirmAction, loadOwnedRuns, loadRun, readSnapshot, submitAction, verifyFactory } from '../src/execution.ts'
+import { actionOutcome, confirmAction, encodeSubmission, restoreSubmission, loadOwnedRuns, loadRun, readSnapshot, submitAction, SupersededTransactionError, verifyFactory } from '../src/execution.ts'
 import { buildEvidenceReport, serialize, validateEvidenceReport } from '../src/evidence.ts'
 import { assertWalletSession, classifyError, readWalletSession, switchToSelectedChain } from '../src/wallet.ts'
 
@@ -82,9 +82,20 @@ try {
   await execute({ type: 'repay', consumer: 'guarded', amount: BORROW_PROBE })
   // Deliberately lose a submitted-action response. Reconcile the same hash rather than rebroadcasting.
   const pending = await submitAction(client, wallet, owner, run, { type: 'configure', fault: 1 }, codeHash)
-  const recovered = await confirmAction(client, pending)
+  const restored = await restoreSubmission(client, encodeSubmission({ type: 'action', value: pending }), owner, factory, 31337, codeHash)
+  assert.equal(restored.type, 'action')
+  assert.equal(restored.value.action.fault, 1)
+  assert.equal(restored.value.before.block.hash, pending.before.block.hash)
+  await assert.rejects(restoreSubmission(client, encodeSubmission({ type: 'action', value: pending }), other, factory, 31337, codeHash), /different wallet/)
+  const recovered = await confirmAction(client, restored.value)
   assert.equal(recovered.hash, pending.hash)
+  await assert.rejects(confirmAction(client, { ...pending, chainId: 421614 }), /Wrong network/)
+  await assert.rejects(submitAction(client, wallet, owner, run, { type: 'deposit', consumer: 'unsafe', amount: 0n }, codeHash), /positive/)
+  const noRpc = new Proxy(client, { get(target, key) { return key === 'readContract' ? async () => { throw new Error('RPC unavailable') } : target[key] } })
+  await assert.rejects(readSnapshot(noRpc, run, owner), /RPC unavailable/)
   records.push(recovered)
+  const replaced = new Proxy(client, { get(target, key) { return key === 'waitForTransactionReceipt' ? async () => client.getTransactionReceipt({ hash: records[0].hash }) : target[key] } })
+  await assert.rejects(confirmAction(replaced, pending), SupersededTransactionError)
   const snapshot = await readSnapshot(client, run, owner)
   const source = { revision: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), dirty: true, compiler: '0.8.30', evmVersion: 'paris', optimizerRuns: 200, factoryCodeHash: codeHash }
   const report = buildEvidenceReport({ owner, contracts: run, chainId: 31337, chainName: 'Isolated local check', source, snapshot, actions: records })
