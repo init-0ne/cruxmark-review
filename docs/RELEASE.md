@@ -10,6 +10,8 @@ The supported release is a static wallet lab and a factory for owned synthetic s
 4. Run `pnpm run dev`. Redeploy after contract changes or local-chain restarts. Do not reuse old local report hashes after restarting Anvil.
 5. Open the loopback app and choose **Use local test account**, or connect a browser test wallet on chain 31337. The local option uses a disposable unlocked Anvil account, requires loopback app/RPC addresses and is unavailable on public sites/chains. The app never asks for a private key. Create a run and prepare 100 tokens in each consumer. Use the flow below.
 
+`pnpm run ui:test` drives the real web app in headless Chrome against its own ephemeral chain: the split flow end to end, a refused action's wording, a vanished or unrecoverable saved transaction and its discard, and that a public-network build never offers the local test account. It also verifies the report the browser produced against the chain. It needs Chrome (`CHROME_PATH`) and is not part of `pnpm run check`.
+
 `pnpm run execution:test` uses a separate ephemeral chain, two independent owners and the same execution module as the web app. It saves a complete local JSON report under ignored `work/verification/` and shuts its chain down. This independently runnable check does not establish normal browser-wallet signing or a public deployment.
 
 ## Public testnet release

@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
+import { findChrome } from './cdp.mjs'
 
 let failed = false
 for (const [label, command, args] of [
@@ -24,5 +25,6 @@ if (Number(process.versions.node.split('.')[0]) !== 24) {
   failed = true
   console.log('Use Node 24; the tested version is in .nvmrc.')
 }
+try { console.log(`OK Chrome for pnpm run ui:test: ${findChrome()}`) } catch { console.log('NOTE No Chrome/Chromium found. Only pnpm run ui:test needs one (set CHROME_PATH); pnpm run check does not.') }
 console.log('This checks local setup. It does not certify deployment, a wallet balance, or plugin connections.')
 process.exitCode = failed ? 1 : 0

@@ -59,6 +59,7 @@ Foundry's Forge, Cast, and Anvil are pinned project dependencies with explicitly
 | `pnpm run contracts:test` | Scenario, boundary, authorization, and fuzz checks |
 | `pnpm run contracts:format` | Format Solidity source |
 | `pnpm run execution:test` | Isolated real-EVM wallet/action/report regressions, no wallet secrets |
+| `pnpm run ui:test` | Real-browser regression check of the execution lab (needs Chrome; set `CHROME_PATH` if it is not found): full split flow, failure wording, transaction recovery and discard, public-build boundary, and a browser-produced report verified on-chain |
 | `pnpm run doctor` | Local tool and project-context readiness |
 | `pnpm run chain` | Local EVM, chain ID 31337 |
 | `pnpm run deploy:local` | Deploy and verify the isolated local factory; configure the local app |

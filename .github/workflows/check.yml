@@ -18,3 +18,16 @@ jobs:
           require-lockfile: true
       - run: pnpm run doctor
       - run: pnpm run check
+  ui:
+    # Advisory until it has a green history on the hosted runner: it needs Chrome and has not run remotely yet.
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/setup@v3
+        with:
+          node-version-file: .nvmrc
+          cache: true
+          require-lockfile: true
+      - run: pnpm run ui:test
