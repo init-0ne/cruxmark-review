@@ -72,7 +72,9 @@ const server = createServer()
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
 const port = server.address().port
 await new Promise((resolve) => server.close(resolve))
-const node = spawn('anvil', ['--host', '127.0.0.1', '--port', String(port), '--chain-id', '31337', '--silent'], { stdio: 'ignore' })
+// Run on the EVM level the contracts target (evm_version = paris): the Robinhood testnet RPC is flagged as lacking PUSH0, and a
+// pre-Shanghai chain rejects it, so this fails if the compiler target is ever raised.
+const node = spawn('anvil', ['--host', '127.0.0.1', '--port', String(port), '--chain-id', '31337', '--hardfork', 'paris', '--silent'], { stdio: 'ignore' })
 const client = createPublicClient({ chain: foundry, transport: http(`http://127.0.0.1:${port}`, { retryCount: 0, timeout: 3000 }), cacheTime: 0 })
 try {
   let ready = false

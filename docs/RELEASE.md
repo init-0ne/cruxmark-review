@@ -24,6 +24,10 @@ The supported release is a static wallet lab and a factory for owned synthetic s
 pnpm exec forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --account cruxmark-testnet --sender "$CRUXMARK_TEST_WALLET"
 ```
 
+A dry run only simulates; nothing is signed or sent, so any public address works as `--sender`. Dry runs on October 2, 2026 against both official public RPCs succeeded. They estimated 3.88M gas for the factory on Robinhood Chain Testnet at 0.02 gwei (about 0.000078 ETH) and 4.11M gas on Arbitrum Sepolia at 0.083 gwei (about 0.00034 ETH). Each `createScenario()` run costs about 2.6M gas. These are simulation estimates, not charges, and gas prices move, but a small faucet drip covers the whole demo. The RPCs reported chain IDs 0xb626 (46630) and 0x66eee (421614) as documented. The largest contract, the factory, is 13.6 KB against the 24.6 KB limit.
+
+Forge prints `EIP-3855 is not supported ... 46630 ... might not work properly` for the Robinhood testnet. That warning is expected and does not apply to this build: `contracts/foundry.toml` compiles for `evm_version = "paris"`, which never emits PUSH0. `pnpm run execution:test` proves it by running every action on an Anvil pinned to `--hardfork paris`, where PUSH0 is rejected (`NotActivated`); compiling for Shanghai makes that check fail. Do not raise the EVM target without re-verifying the chain.
+
 After the user can sign and the dry-run/faucet balance are verified, run that command with `--broadcast`. `CRUXMARK_TEST_WALLET` is a public address only. Never pass a private key in an argument or environment file.
 
 Verify the actual public result:
