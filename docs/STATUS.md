@@ -60,6 +60,15 @@ October 2, 2026:
 
 M1 remainder in `BUILD_PLAN.md`: wire the completed unsafe/guarded split action into the frontend so the comparison reflects observed contract behavior, then continue to M2 wallet execution. The user declined the GitHub plugin for this request. Use the authenticated GitHub CLI for authorized repository operations; plugin installation is not a pending setup task.
 
+## Isolated scenario factory verification
+
+October 2, 2026:
+
+- `ScenarioFactory`/`ScenarioInstance` give every wallet its own mocks, guard and consumers. `createScenario` records the caller as owner; only that owner can inject split/pause/price faults. Alice's multiplier-2 fault leaves Bob's sandbox at multiplier 1, and cross-owner mutation reverts.
+- `pnpm run check` passed: strict TypeScript, production web build, Solidity formatting, 30 contract tests (14 guard + 12 consumer + 4 factory), including 256-run fuzz suites.
+- `pnpm run deploy:local` passed on Anvil chain 31337; the sandbox now deploys the shared mocks/guard/consumers plus the factory (nine transactions) in ignored broadcast output. Addresses there remain transient local evidence.
+- Frontend wallet execution against a user-owned instance is still unimplemented; landing-page comparisons remain illustrative.
+
 ## M1 split harness verification
 
 October 2, 2026:

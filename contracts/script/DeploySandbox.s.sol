@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {PriceGuard} from "../src/PriceGuard.sol";
 import {GuardedStockConsumer, UnsafeStockConsumer} from "../src/ScenarioConsumers.sol";
+import {ScenarioFactory} from "../src/ScenarioFactory.sol";
 import {MockFeed, MockStockStatus} from "../src/mocks/MockInputs.sol";
 
 interface VmDeploy {
@@ -21,7 +22,8 @@ contract DeploySandbox {
             MockFeed sequencer,
             MockStockStatus token,
             UnsafeStockConsumer unsafeConsumer,
-            GuardedStockConsumer guardedConsumer
+            GuardedStockConsumer guardedConsumer,
+            ScenarioFactory factory
         )
     {
         require(
@@ -38,6 +40,7 @@ contract DeploySandbox {
         guard = new PriceGuard(address(price), address(sequencer), address(token), 300, 3600);
         unsafeConsumer = new UnsafeStockConsumer(address(price), address(token));
         guardedConsumer = new GuardedStockConsumer(address(guard));
+        factory = new ScenarioFactory();
         vm.stopBroadcast();
     }
 }
