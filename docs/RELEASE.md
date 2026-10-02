@@ -1,0 +1,59 @@
+# Release a reproducible Cruxmark demo
+
+The supported release is a static wallet lab and a factory for owned synthetic scenarios. It is not a production lending system. This checklist never authorizes mainnet writes, paid services, or handling private keys in source/chat/output.
+
+## Local review
+
+1. Use Node 24 and the pinned pnpm version. Run `pnpm install --frozen-lockfile`, `pnpm run doctor`, and `pnpm run check`.
+2. Start `pnpm run chain` in its own terminal. Anvil is loopback-only and quiet; its unlocked accounts are public disposable test accounts.
+3. Run `pnpm run deploy:local`. This deploys one factory, verifies the RPC chain, live successful creation receipt, creation calldata and exact runtime bytecode at the deployment block/current block. It writes `work/deployment/local.json` and updates only the three public network/factory settings in ignored `.env.local`.
+4. Run `pnpm run dev`. Redeploy after contract changes or local-chain restarts. Do not reuse old local report hashes after restarting Anvil.
+5. Use a test wallet on chain 31337. The app never asks for a private key. Create a run and prepare 100 tokens in each consumer. Use the flow below.
+
+`pnpm run execution:test` uses a separate ephemeral chain, two independent owners and the same execution module as the web app. It saves a complete local JSON report under ignored `work/verification/` and shuts its chain down. This independently runnable check does not establish normal browser-wallet signing or a public deployment.
+
+## Public testnet release
+
+- Obtain the user's dedicated test-wallet public address, signing access and free faucet ETH. Do not collect or print a private key/password. Keep keystore import/signing prompts private and interactive.
+- Check registration, participant/team eligibility and the signed-in HackQuest form. A legal acceptance or prize-wallet decision belongs to the user; do not guess it.
+- Choose Robinhood Chain Testnet (46630) or Arbitrum Sepolia (421614). Official public RPCs are in `src/chains.ts`. Read the actual RPC chain ID before broadcasting; no mainnet fallback exists.
+- Commit/review the release, then run the full checks from the clean source revision. The factory and instance constructors reject unsupported chains.
+- Dry-run the deployment using an encrypted keystore imported by the user. Example for Robinhood testnet:
+
+```sh
+pnpm exec forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --account cruxmark-testnet --sender "$CRUXMARK_TEST_WALLET"
+```
+
+After the user can sign and the dry-run/faucet balance are verified, run that command with `--broadcast`. `CRUXMARK_TEST_WALLET` is a public address only. Never pass a private key in an argument or environment file.
+
+Verify the actual public result:
+
+```sh
+pnpm run deployment:verify --network robinhood-testnet
+```
+
+The verifier requires a clean source revision for public evidence and reads the broadcast file for the selected network. It verifies the receipt, block hash, creation input, source compiler/settings and exact current/historical runtime bytecode. It writes `work/deployment/robinhood-testnet.json`. For Sepolia use `--network arbitrum-sepolia`; for a different broadcast file use `--broadcast <path>`. No RPC URL/credentials are stored in the manifest.
+
+Retain a reviewed copy of the public manifest for submission. Explorer source verification is a separate action with the exact compiler/settings and source; the manifest does not assert explorer verification.
+
+Set the public build environment to the selected `VITE_NETWORK` and verified `VITE_FACTORY_ADDRESS`. `.env.local` can override a shell choice locally; inspect/update only these public settings before building. The browser checks compiled factory bytecode before any scenario action. A changed contract requires a matching redeployment/build; a copied address is insufficient.
+
+Use free Cloudflare Pages static hosting: Node 24, pinned pnpm, `pnpm install --frozen-lockfile`, `pnpm run build`, output `dist`. Set public network/factory values in that build environment. Confirm free-plan/account access; no backend, worker, domain or private key belongs in the deployment. Add `public/_headers` to the output for the security headers included here.
+
+Keep the source private unless the user authorizes publication; the existing GitHub repository is private. Reviewer access/invitations, a remote push and public hosting are separate actions. Check CI for the exact release hash after authorized publication; the earlier green CI run does not cover these local changes.
+
+## Observed demo sequence
+
+For the split: prepare both positions → seed Stock split → borrow $12k unsafe → test $12k guarded rejection → borrow $6k guarded control → repay. The four split coverage rows should verify from those actual actions.
+
+For unavailable price: restore healthy → borrow $1k guarded to seed repayable debt → seed Paused price → borrow $1k unsafe → test guarded rejection → repay while blocked. Repeat for Stale price, restoring healthy before seeding guarded debt again. Successful pre-fault healthy borrowing is the healthy control.
+
+For sequencer: repeat that sequence for Sequencer down and Recovery grace. The post-grace control sets a historical recovery timestamp while the real chain operates. It neither interrupts the chain nor waits an hour. Borrow $1k guarded after restoring post-grace healthy inputs to show reopening.
+
+Expected rejection tests intentionally spend test gas on a reverted transaction after the exact guard is decoded. Wallet rejection, unknown revert, RPC failure and a pending hash verify no check. If confirmation times out, retry the saved hash; never blindly send a duplicate. After reload reconnect the same wallet/network to recover it. Download completed reports before changing run/browser session; earlier completed action history is not automatically reconstructed.
+
+Download JSON evidence and retain the transaction explorer links. Complete suite coverage requires all 15 recorded checks; partial runs are correctly labeled partial. A report’s reverted-reason field is a same-block replay, not a transaction trace or third-party attestation.
+
+## Final gate
+
+Verify all families with a fresh public wallet/browser, blocked-price repayment, wrong-network/rejected-signature/RPC recovery, partial/full downloads, mobile controls, public receipt status and contract state. Capture a short backup recording and the exact source commit/report/manifest. Recheck event terms/deadlines and capture actual submission confirmation. Until these gates run, describe the release as locally verified and pending public completion.

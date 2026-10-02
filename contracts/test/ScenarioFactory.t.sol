@@ -6,6 +6,7 @@ import {GuardedStockConsumer} from "../src/ScenarioConsumers.sol";
 import {ScenarioFactory, ScenarioInstance} from "../src/ScenarioFactory.sol";
 
 interface VmFactory {
+    function chainId(uint256) external;
     function warp(uint256) external;
     function expectRevert(bytes calldata) external;
     function expectRevert(bytes4) external;
@@ -22,6 +23,19 @@ contract ScenarioFactoryTest {
     function setUp() public {
         vm.warp(10_000);
         factory = new ScenarioFactory();
+    }
+
+    function testFactoryRejectsUnsupportedChains() public {
+        vm.chainId(1);
+        vm.expectRevert(bytes("Test networks only"));
+        new ScenarioFactory();
+        vm.chainId(1337);
+        vm.expectRevert(bytes("Test networks only"));
+        new ScenarioFactory();
+        vm.chainId(421614);
+        new ScenarioFactory();
+        vm.chainId(46630);
+        new ScenarioFactory();
     }
 
     function testCreateScenarioIsolatesOwners() public {

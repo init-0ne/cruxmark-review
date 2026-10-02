@@ -45,3 +45,7 @@ Clearly state that fault inputs and the unsafe integration are deliberately cons
 - [ ] Capture submission confirmation and save the submitted source version.
 
 The current setup performs none of the account, external deployment, hosting, invitation or submission actions above. `STATUS.md` is the place to record them as they occur.
+
+## Locally verified technical readiness
+
+All three families, healthy controls, blocked-price repayment, owner isolation, exact report amounts and live receipt/bytecode verification have runnable local checks. The full check currently includes 35 contract tests and 41 real local actions covering 15 report checks. Follow `RELEASE.md` to capture equivalent public evidence; the public/account/hosting checkboxes above remain open. The existing source repository is private, with earlier baseline CI green; the new release has not been pushed or run remotely in this pass.

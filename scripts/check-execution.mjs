@@ -31,6 +31,13 @@ try {
   assert.equal(deployment.status, 'success')
   const factory = deployment.contractAddress
   await verifyFactory(client, factory, 31337, codeHash)
+  mkdirSync('work/verification', { recursive: true })
+  writeFileSync('work/verification/broadcast.json', JSON.stringify({ transactions: [{ contractName: 'ScenarioFactory', contractAddress: factory, hash: deploymentHash }] }))
+  execFileSync(process.execPath, ['scripts/verify-deployment.mjs', '--network', 'local', '--rpc-url', `http://127.0.0.1:${port}`, '--broadcast', 'work/verification/broadcast.json', '--output', 'work/verification/deployment.json'], { stdio: 'pipe' })
+  const manifest = JSON.parse(readFileSync('work/verification/deployment.json', 'utf8'))
+  assert.equal(manifest.factory.runtimeCodeHash, codeHash)
+  assert.equal(manifest.deployment.status, 'success')
+
   await assert.rejects(verifyFactory(client, factory, 1, codeHash), /Wrong network/)
   await assert.rejects(verifyFactory(client, factory, 31337, `0x${'0'.repeat(64)}`), /bytecode/)
   await assert.rejects(verifyFactory(client, owner, 31337, codeHash), /bytecode/)

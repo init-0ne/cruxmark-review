@@ -114,6 +114,13 @@ contract ScenarioFactory {
 
     mapping(address => address[]) private _scenarios;
 
+    constructor() {
+        require(
+            block.chainid == 31337 || block.chainid == 46630 || block.chainid == 421614,
+            "Test networks only"
+        );
+    }
+
     function createScenario() external returns (ScenarioInstance instance) {
         instance = new ScenarioInstance(msg.sender);
         _scenarios[msg.sender].push(address(instance));

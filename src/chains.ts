@@ -10,7 +10,7 @@ const robinhoodTestnet = defineChain({
   testnet: true,
 })
 
-const networks = { local: { ...foundry, name: 'Local sandbox' }, 'robinhood-testnet': robinhoodTestnet, 'arbitrum-sepolia': arbitrumSepolia }
+export const networks = { local: { ...foundry, name: 'Local sandbox' }, 'robinhood-testnet': robinhoodTestnet, 'arbitrum-sepolia': arbitrumSepolia }
 const selected = import.meta.env?.VITE_NETWORK || 'local'
 if (!Object.hasOwn(networks, selected)) throw new Error('VITE_NETWORK must be local, robinhood-testnet, or arbitrum-sepolia')
 export const chain = networks[selected as keyof typeof networks]

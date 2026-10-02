@@ -6,7 +6,7 @@
 
 Use `STATUS.md` to resume verified work and `BUILD_PLAN.md` for priorities. Record a consequential new decision where it belongs and summarize it in status. Avoid multiple conflicting copies of the spec or a separate speculative “memory engine.”
 
-For this chat, the working directory remains the earlier research workspace. Commands for the project explicitly target `/Users/user64bit/Code/cruxmark`. Open that directory as a Codex project for ongoing work so project-local instructions are the default context.
+The active workspace is `/Users/user64bit/Code/cruxmark`. Repository-local instructions apply here.
 
 ## Skill routing
 
@@ -75,7 +75,7 @@ No always-on compilation server, enterprise uptime, production liquidity, custom
 
 ## Public testnet deployment procedure
 
-This is prepared guidance for the next build phase, not an executed public deployment. Use a dedicated test wallet, acquire faucet ETH and verify the selected network. Robinhood Chain Testnet is 46630, RPC `https://rpc.testnet.chain.robinhood.com`, explorer `https://explorer.testnet.chain.robinhood.com`. Arbitrum Sepolia is 421614, RPC `https://sepolia-rollup.arbitrum.io/rpc`, explorer `https://sepolia.arbiscan.io`. [Robinhood configuration](https://docs.robinhood.com/chain/connecting/), [Arbitrum configuration](https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info)
+Public deployment remains pending; use `RELEASE.md` as the current release checklist. Local deployment now creates only the factory and verifies/configures it automatically. Use a dedicated test wallet, acquire faucet ETH and verify the selected network. Robinhood Chain Testnet is 46630, RPC `https://rpc.testnet.chain.robinhood.com`, explorer `https://explorer.testnet.chain.robinhood.com`. Arbitrum Sepolia is 421614, RPC `https://sepolia-rollup.arbitrum.io/rpc`, explorer `https://sepolia.arbiscan.io`. [Robinhood configuration](https://docs.robinhood.com/chain/connecting/), [Arbitrum configuration](https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info)
 
 An official Robinhood testnet faucet is at [faucet.testnet.chain.robinhood.com](https://faucet.testnet.chain.robinhood.com). Availability/account eligibility is not confirmed. For Sepolia faucet choices consult the current Arbitrum chain page; do not buy test funds or bridge mainnet money for this demo.
 
@@ -95,7 +95,7 @@ After confirming chain, simulation, funds and intended mock deployment, the same
 
 Record the resulting addresses/labels, source commit, owner, chain ID, transaction hashes, successful receipts, block numbers and bytecode. Do not copy the setup's local Anvil addresses into public configuration. Explorer source verification requires the actual compiler/settings; use the explorer's current supported verification method. A configured explorer link does not mean verification succeeded.
 
-Set `.env.local` to `VITE_NETWORK=robinhood-testnet` (or `arbitrum-sepolia`) and restart the dev server. Current UI checks network connectivity only. Connecting the deployment manifest, wallet and scenario controls is M2; addresses alone do not complete the platform.
+Set `.env.local` to `VITE_NETWORK=robinhood-testnet` (or `arbitrum-sepolia`) and restart the dev server. The UI now verifies factory runtime bytecode and executes wallet-owned scenarios. Use `pnpm run deployment:verify --network <target>` for live receipt/bytecode/source evidence; addresses alone do not complete the platform. See `RELEASE.md` for the current release procedure.
 
 Free static hosting: use Node 24, install `pnpm install --frozen-lockfile`, build `pnpm run build`, publish `dist`, and set the public `VITE_NETWORK` before building. No runtime private key, paid backend, Cloudflare Worker or custom domain is required. Confirm the account is on the free plan before publication.
 

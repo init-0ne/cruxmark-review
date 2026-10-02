@@ -17,8 +17,9 @@
     "check": "pnpm run build && forge fmt --root contracts --check && pnpm run contracts:test && pnpm run execution:test",
     "doctor": "node scripts/doctor.mjs",
     "chain": "anvil --host 127.0.0.1 --chain-id 31337 --silent",
-    "deploy:local": "forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast",
-    "execution:test": "node scripts/check-execution.mjs"
+    "deploy:local": "forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast && node scripts/verify-deployment.mjs --network local --configure-local",
+    "execution:test": "node scripts/check-execution.mjs",
+    "deployment:verify": "forge build --root contracts && node scripts/verify-deployment.mjs"
   },
   "dependencies": {
     "react": "19.3.0",

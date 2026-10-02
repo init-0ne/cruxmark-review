@@ -34,7 +34,7 @@ pnpm run deploy:local
 
 Foundry's Forge, Cast, and Anvil are pinned project dependencies with explicitly allowed installation scripts in `pnpm-workspace.yaml`. No global Foundry install, Docker, paid API, account, or funded wallet is needed for the local loop. The first contract build downloads the pinned Solidity compiler. Do not expose Anvil outside localhost; its accounts are public test accounts.
 
-Copy `.env.example` to `.env.local` only when changing the selected network. All `VITE_*` settings are visible to browser users. Keep private keys out of environment files and use wallet signing or an encrypted Foundry keystore for public testnet transactions.
+`deploy:local` now verifies the factory and updates the public local settings in `.env.local`; restart the app afterward. Use `.env.example` for public network settings. All `VITE_*` settings are visible to browser users. Keep private keys out of environment files and use wallet signing or an encrypted Foundry keystore for public testnet transactions.
 
 ## Where to start reading
 
@@ -47,6 +47,7 @@ Copy `.env.example` to `.env.local` only when changing the selected network. All
 | [Hackathon](docs/HACKATHON.md) | Verified dates, awards, requirements, gaps, official sources |
 | [Submission checklist](docs/SUBMISSION.md) | Assets to collect and a concrete demo narrative |
 | [Agent/tool setup](docs/AGENT_SETUP.md) | Relevant skills, plugin state, versions, workflow and $0 budget |
+| [Release guide](docs/RELEASE.md) | Local bootstrap, public deployment verification and fresh-run demo checklist |
 | [Current status](docs/STATUS.md) | What exists, what was checked, and what still needs doing |
 
 ## Commands
@@ -61,9 +62,10 @@ Copy `.env.example` to `.env.local` only when changing the selected network. All
 | `pnpm run execution:test` | Isolated real-EVM wallet/action/report regressions, no wallet secrets |
 | `pnpm run doctor` | Local tool and project-context readiness |
 | `pnpm run chain` | Local EVM, chain ID 31337 |
-| `pnpm run deploy:local` | Deploy our owned test sandbox to localhost |
+| `pnpm run deploy:local` | Deploy and verify the isolated local factory; configure the local app |
+| `pnpm run deployment:verify --network <target>` | Verify live factory receipt/bytecode and write a source-linked manifest |
 
-After deployment set `VITE_FACTORY_ADDRESS` in `.env.local` to the factory address and restart the app. The web build verifies that factory’s runtime hash against its compiled source before allowing scenario actions. Recompile/redeploy after contract changes.
+For public deployment set `VITE_FACTORY_ADDRESS` to the verified factory address and restart/rebuild the app. The web build verifies that factory’s runtime hash against its compiled source before allowing scenario actions. Recompile/redeploy after contract changes.
 
 The default network is local. Planned public demo target: Robinhood Chain Testnet (46630). Arbitrum Sepolia (421614) is a fallback if faucet access blocks the demo. Public testnet deployment, site publication, and HackQuest registration/submission have not been performed by this setup. No remote Git repository is created automatically.
 
