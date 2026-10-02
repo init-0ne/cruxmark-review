@@ -49,16 +49,23 @@ October 2, 2026:
 
 ## Not yet implemented/provisioned
 
-- Isolated public scenario creation (local sandbox still shares one mock set).
-- Wallet signing and scenario execution in the web UI.
-- Report exporter and complete end-to-end public demo.
+- Report exporter and complete end-to-end public demo (execution evidence is shown on screen; no downloadable JSON yet).
 - Public testnet deployment, funded test wallet, hosting or remote repository.
 - HackQuest registration/submission, legal eligibility review and confirmed prize wallet.
 - Customer validation or domain/trademark clearance.
 
 ## Next concrete task
 
-M1 remainder in `BUILD_PLAN.md`: wire the completed unsafe/guarded split action into the frontend so the comparison reflects observed contract behavior, then continue to M2 wallet execution. The user declined the GitHub plugin for this request. Use the authenticated GitHub CLI for authorized repository operations; plugin installation is not a pending setup task.
+M4 in `BUILD_PLAN.md`: export a versioned JSON evidence report from observed execution data (chain, contracts, inputs, tx hashes/blocks/receipts, decimal-string amounts). Then M5 public testnet deployment and submission. The user declined the GitHub plugin for this request. Use the authenticated GitHub CLI for authorized repository operations; plugin installation is not a pending setup task.
+
+## Live split execution verification
+
+October 2, 2026:
+
+- The landing page now includes a live execution section (`src/ExecutionPanel.tsx` with `src/contracts.ts`/`src/wallet.ts`): connect test wallet → verify/switch to the selected chain → `ScenarioFactory.createScenario` → inject/clear the 2× split → deposit 100 synthetic tokens into both consumers → borrow $12k unsafe (expects success), $12k guarded (expects `BorrowExceedsCap` revert), $6k guarded (expects success) → repay → refresh reads. All badges/values derive from confirmed receipts and contract reads; rejected signatures, wrong network, reverts and RPC failures each have explicit states. No wallet library was added; native EIP-1193 via Viem is used.
+- End-to-end flow verified on a fresh local Anvil run with cast-driven transactions against a user-owned instance: unsafe value `20000000000000000000000` ($20,000), guarded `10000000000000000000000` ($10,000); caps 12,000/6,000; unsafe 12k borrow confirmed, guarded 12k borrow reverted with `0x197f42e9` (`BorrowExceedsCap()`), guarded 6k borrow confirmed; both debts repaid to zero. The frontend uses the same ABIs/function names/arguments.
+- Browser wallet signing was not exercised in this environment (no browser automation available); the UI's pending/rejected/wrong-network/reverted/RPC states are implemented but only the contract behavior underneath is verified. Set `VITE_FACTORY_ADDRESS` in `.env.local` to the deployed factory and restart the dev server to enable the panel; without it the section shows configuration instructions instead of claiming execution.
+- Production build grew to ~408 KB minified (~127 KB gzip) because wallet execution imports Viem up front; the earlier 245 KB deferred-RPC optimization no longer applies once execution ships. `pnpm run check` result is recorded below.
 
 ## Isolated scenario factory verification
 
