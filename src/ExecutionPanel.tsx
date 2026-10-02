@@ -267,6 +267,17 @@ export default function ExecutionPanel() {
       setNotice({ tone: 'info', text: 'Inputs and positions read at block ' + observed.block.number + '.' })
     })
   }
+  /** Escape for a submission that can never be confirmed (dropped, or its block state pruned by the RPC). Never counts toward evidence. */
+  function discard() {
+    const owner = accountRef.current
+    if (!owner || !window.confirm('Discard the saved transaction? It is never counted as evidence. If it is still pending it may confirm later and change this run; check the explorer first if unsure.')) return
+    epoch.current++ // Drop any in-flight confirmation so it cannot record a discarded action.
+    lock.current = false
+    setBusy(null)
+    clearSubmission(owner)
+    setRecoveryBlocked(false)
+    setNotice({ tone: 'info', text: 'Saved transaction discarded and not counted. Select a run or use Refresh reads to continue from the chain’s current state.' })
+  }
   function download() {
     if (!account || !run || !snapshot || pending) return
     try {
@@ -288,9 +299,9 @@ export default function ExecutionPanel() {
   const priceError = family === 'price' ? 'PriceUnavailable' : 'SequencerUnavailable'
   const pendingHash = pending?.type === 'action' ? pending.value.hash : pending?.hash
   const guidance = recoveryBlocked
-    ? 'Reconnect to restore the saved transaction before sending another action.'
+    ? 'Reconnect to restore the saved transaction, or discard it, before sending another action.'
     : pending
-      ? 'A transaction is submitted. Wait for its receipt, or retry confirmation. Do not send a duplicate.'
+      ? 'A transaction is submitted. Wait for its receipt, or retry confirmation. Do not send a duplicate; discard it only if it can never confirm.'
       : nextLabStep(family, snapshot, records)
 
   return <section id="execute" className="exec-section wrap" aria-labelledby="execute-title">
@@ -311,8 +322,8 @@ export default function ExecutionPanel() {
         <div className="exec-step exec-borrow"><p className="mono exec-label">06 / COMPARE</p><h3>Execute the same action through both paths</h3><div className="exec-actions">{family === 'split' ? <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_INCORRECT)}>Borrow $12k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_INCORRECT, 'BorrowExceedsCap')}>Test $12k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_CORRECT)}>Borrow $6k guarded control</button></> : <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_PROBE)}>Borrow $1k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE, priceError)}>Test $1k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE)}>Borrow $1k healthy control</button></>}<button className="button button-small button-outline" disabled={disabled} onClick={repay}>Repay all debt</button></div><p className="exec-hint">Rejection tests deliberately submit a reverted transaction after an exact guard check. This consumes test ETH for gas. Browser wallets ask to sign; the local option uses an unlocked test account. A rejected signature verifies no check.</p></div>
         <div className="exec-results">
           <div role="status" aria-live="polite" aria-atomic="true">{notice && <p className={`exec-notice ${notice.tone}`}>{busy && <span className="exec-spinner" aria-hidden="true" />}{notice.text}</p>}</div>
-          {recoveryBlocked && <p className="exec-notice error">A saved transaction could not be restored. Reconnect to retry its chain reads; writes stay locked to prevent a duplicate.</p>}
-          {pendingHash && <div className="exec-pending"><p>Submitted transaction {explorerTxUrl(pendingHash) ? <a href={explorerTxUrl(pendingHash)} target="_blank" rel="noreferrer">{truncateAddress(pendingHash)} ↗</a> : <span className="mono">{pendingHash}</span>}. Confirmation is incomplete; no result is counted.</p><button className="button button-small button-outline" disabled={!!busy} onClick={refresh}>Retry confirmation</button></div>}
+          {recoveryBlocked && <div className="exec-pending"><p>A saved transaction could not be restored. Public RPCs prune old block state, so this can be permanent. Reconnect to retry its chain reads, or discard it. Writes stay locked until then to prevent a duplicate.</p><div className="exec-row"><button className="button button-small button-outline" onClick={discard}>Discard saved transaction</button></div></div>}
+          {pendingHash && <div className="exec-pending"><p>Submitted transaction {explorerTxUrl(pendingHash) ? <a href={explorerTxUrl(pendingHash)} target="_blank" rel="noreferrer">{truncateAddress(pendingHash)} ↗</a> : <span className="mono">{pendingHash}</span>}. Confirmation is incomplete; no result is counted. If the transaction was dropped or the RPC no longer serves its block state, discard it to continue.</p><div className="exec-row"><button className="button button-small button-outline" disabled={!!busy} onClick={refresh}>Retry confirmation</button><button className="button button-small button-outline" onClick={discard}>Discard saved transaction</button></div></div>}
           {snapshot ? <><p className="exec-hint mono">OBSERVED BLOCK {snapshot.block.number.toString()} · CHAIN TIME {snapshot.block.timestamp.toString()}</p><div className="exec-values">{(['unsafe', 'guarded'] as const).map((consumer) => <div key={consumer}><span>{consumer === 'unsafe' ? 'Seeded unsafe' : 'Guarded'} value</span><strong>{snapshot[consumer].value === undefined ? 'Blocked' : formatUsd18(snapshot[consumer].value!)}</strong><small>{snapshot[consumer].error || `Cap ${formatUsd18(snapshot[consumer].cap!)}`}</small><small>Debt {formatUsd18(snapshot[consumer].debt)} · Collateral {(snapshot[consumer].collateral / 10n ** 18n).toString()} tokens</small></div>)}<div><span>Input evidence</span><small className="mono">price {snapshot.inputs.price.answer.toString()} / {snapshot.inputs.priceDecimals} decimals<br />updated {snapshot.inputs.price.updatedAt.toString()}<br />multiplier {snapshot.inputs.multiplier.toString()}<br />paused {String(snapshot.inputs.paused)}<br />sequencer {snapshot.inputs.sequencer.status.toString()} / started {snapshot.inputs.sequencer.startedAt.toString()}</small></div></div></> : <p className="exec-empty">Create or select an owned run to read inputs and positions. Results appear only after real contract reads.</p>}
           <div className="exec-checks"><p className="mono exec-label">OBSERVED COVERAGE · {visibleChecks.filter((item) => item.status === 'verified').length}/{visibleChecks.length}</p><ul>{visibleChecks.map((item) => <li key={item.id}><span className={`exec-badge ${item.status === 'verified' ? 'ok' : ''}`}>{item.status === 'verified' ? 'Verified' : 'Incomplete'}</span><span>{item.id.replace(': ', ' · ')}</span></li>)}</ul></div>
           {records.length > 0 && <details className="exec-history"><summary>Confirmed action history ({records.length})</summary><ul className="exec-txs">{records.map((record) => <li key={record.hash}><span>{record.action.type === 'configure' ? faults[record.action.fault] : `${record.action.type} ${record.action.consumer}`} · {actionOutcome(record)}{record.replayError && ` (${record.replayError})`}</span><span className="mono">{explorerTxUrl(record.hash) ? <a href={explorerTxUrl(record.hash)} target="_blank" rel="noreferrer">{truncateAddress(record.hash)} ↗</a> : truncateAddress(record.hash)} · block {record.receipt.block.number.toString()} · {record.receipt.status}</span></li>)}</ul></details>}
