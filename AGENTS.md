@@ -32,7 +32,8 @@ Roles are responsibilities, not automatic subagent permission: product owner mai
 
 ## Validation and handoff
 
-- Run `pnpm run check` after implementation changes; narrower checks are fine for unrelated prose edits. Run `pnpm run doctor` after tool/config changes.
+- Run `pnpm run check` after implementation changes; narrower checks are fine for unrelated prose edits. Run `pnpm run doctor` after tool/config changes. Also run `pnpm run ui:test` (real browser; needs Chrome) after changing `src/ExecutionPanel.tsx`, `src/wallet.ts`, the evidence/verification modules or anything the lab renders.
+- Verify behavior claims against reality before documenting them: measure public RPCs read-only, and mutation-test new checks (plant the bug, confirm the check fails). Local Anvil differs from public RPCs in history pruning, rate limits and gas accounting.
 - Financial/security logic needs behavioral tests, including rejection cases and exact time/unit boundaries. Never remove checks to get a green build.
 - Before marking a public scenario complete, verify success/revert outcomes, receipt status and contract state on the selected network. A transaction hash alone is not success.
 - Review the diff and `git status` before committing. Never include secrets or generated build/broadcast files. No remote publication or submission is implied by local setup.
