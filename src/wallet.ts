@@ -1,5 +1,6 @@
-import { createWalletClient, custom, isAddress } from 'viem'
+import { BaseError, createWalletClient, custom, isAddress } from 'viem'
 import { chain } from './chains.ts'
+import { contractError, guardMessages } from './execution.ts'
 
 export interface EthereumProvider {
   request: (args: { method: string; params?: unknown }) => Promise<unknown>
@@ -123,61 +124,54 @@ export function getWalletClient(account: `0x${string}`) {
   return createWalletClient({ account, chain, transport: custom(provider, { retryCount: 0 }) })
 }
 
-export type FailureKind =
-  | 'rejected'
-  | 'wrong-network'
-  | 'reverted'
-  | 'rpc'
-  | 'config'
-  | 'unknown'
+export type FailureKind = 'rejected' | 'funds' | 'wrong-network' | 'reverted' | 'timeout' | 'rpc' | 'unknown'
 
-export function classifyError(error: unknown): { kind: FailureKind; message: string } {
-  const message = errorMessage(error)
-  const lower = message.toLowerCase()
-  if (
-    lower.includes('user rejected') ||
-    lower.includes('user denied') ||
-    lower.includes('rejected the request') ||
-    errorCode(error) === 4001
-  ) {
-    return { kind: 'rejected', message: 'Signature rejected in the wallet. No transaction was sent.' }
-  }
-  if (lower.includes('chain') && (lower.includes('mismatch') || lower.includes('wrong network'))) {
-    return { kind: 'wrong-network', message: 'The wallet is on the wrong network. Switch and retry.' }
-  }
-  if (
-    lower.includes('revert') ||
-    lower.includes('borrowexceedscap') ||
-    lower.includes('priceunavailable') ||
-    lower.includes('sequencerunavailable') ||
-    lower.includes('only scenario owner')
-  ) {
-    return { kind: 'reverted', message: message.slice(0, 280) }
-  }
-  if (
-    lower.includes('fetch') ||
-    lower.includes('network') ||
-    lower.includes('timeout') ||
-    lower.includes('rpc') ||
-    lower.includes('failed to fetch') ||
-    lower.includes('could not connect')
-  ) {
-    return { kind: 'rpc', message: 'RPC request failed. Check the network and retry.' }
-  }
-  return { kind: 'unknown', message: message.slice(0, 280) }
+type Link = { name?: unknown; code?: unknown; status?: unknown; cause?: unknown }
+function causeChain(error: unknown): Link[] {
+  const chain: Link[] = []
+  for (let item = error; item && typeof item === 'object' && chain.length < 10; item = (item as Link).cause) chain.push(item as Link)
+  return chain
 }
 
-export function errorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    const cause = (error as { cause?: unknown }).cause
-    if (typeof cause === 'string') return cause
-    if (cause instanceof Error) return cause.message + ' — ' + error.message
-    // Viem attaches a human-readable shortMessage on contract errors.
-    const short = (error as { shortMessage?: unknown }).shortMessage
-    if (typeof short === 'string') return short + ' — ' + error.message
-    return error.message
+/**
+ * Describe a failure from its error type, not its wording. Our own curated
+ * errors are plain Errors and pass through unchanged as `unknown`.
+ */
+export function classifyError(error: unknown): { kind: FailureKind; message: string } {
+  const chain = causeChain(error)
+  const named = (name: string) => chain.some((link) => link.name === name)
+  const raw = errorMessage(error)
+  if (named('UserRejectedRequestError') || chain.some((link) => link.code === 4001)) {
+    return { kind: 'rejected', message: 'You rejected the request in your wallet. No transaction was sent.' }
   }
-  return String(error)
+  if (named('InsufficientFundsError') || /insufficient funds/i.test(raw)) {
+    return { kind: 'funds', message: 'This wallet has too little test ETH for gas. Use the faucet link above, then retry.' }
+  }
+  if (named('ChainMismatchError') || named('SwitchChainError')) {
+    return { kind: 'wrong-network', message: 'The wallet is on the wrong network. Switch and retry.' }
+  }
+  const guard = contractError(error)
+  if (guard) return { kind: 'reverted', message: guardMessages[guard] }
+  if (named('ContractFunctionRevertedError')) return { kind: 'reverted', message: raw }
+  if (named('WaitForTransactionReceiptTimeoutError')) {
+    return { kind: 'timeout', message: 'Timed out waiting for the receipt. The transaction may still confirm, so retry confirmation. If it was dropped, discard it.' }
+  }
+  const http = chain.find((link) => link.name === 'HttpRequestError')
+  if (http) {
+    return { kind: 'rpc', message: http.status === 429 ? 'The public RPC is rate-limiting requests. Wait a few seconds, then retry.' : 'RPC request failed. Check the network and retry.' }
+  }
+  if (named('TimeoutError')) return { kind: 'rpc', message: 'The RPC did not respond in time. Retry.' }
+  return { kind: 'unknown', message: raw }
+}
+
+/** Viem's concise line (plus the node's detail when it adds something); never its request dump or version footer. */
+export function errorMessage(error: unknown): string {
+  if (error instanceof BaseError) {
+    const detail = typeof error.details === 'string' ? error.details.split('\n')[0] : '' // viem types this as always present; some errors omit it.
+    return detail && !error.shortMessage.includes(detail) ? `${error.shortMessage} (${detail})` : error.shortMessage
+  }
+  const message = error && typeof error === 'object' ? (error as { message?: unknown }).message : undefined
+  return typeof message === 'string' ? message : String(error)
 }
 
 export function explorerTxUrl(hash: string): string | undefined {

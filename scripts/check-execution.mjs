@@ -1,12 +1,13 @@
 import assert from 'node:assert/strict'
 import { spawn, execFileSync } from 'node:child_process'
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { createServer as createHttpServer } from 'node:http'
 import { createServer } from 'node:net'
 import { setTimeout as pause } from 'node:timers/promises'
-import { createPublicClient, createWalletClient, http, keccak256, parseEventLogs } from 'viem'
+import { createPublicClient, createWalletClient, custom, http, InsufficientFundsError, keccak256, parseEventLogs } from 'viem'
 import { foundry } from 'viem/chains'
 import { factoryAbi, BORROW_CORRECT, BORROW_INCORRECT, BORROW_PROBE, DEPOSIT_AMOUNT } from '../src/contracts.ts'
-import { actionOutcome, confirmAction, encodeSubmission, restoreSubmission, loadOwnedRuns, loadRun, readSnapshot, submitAction, SupersededTransactionError, verifyFactory } from '../src/execution.ts'
+import { actionOutcome, confirmAction, encodeSubmission, guardMessages, restoreSubmission, loadOwnedRuns, loadRun, readSnapshot, submitAction, SupersededTransactionError, verifyFactory } from '../src/execution.ts'
 import { buildEvidenceReport, nextLabStep, observedFault, serialize, validateEvidenceReport } from '../src/evidence.ts'
 import { assertWalletSession, connectLocalAccount, classifyError, getProvider, readWalletSession, switchToSelectedChain } from '../src/wallet.ts'
 
@@ -137,6 +138,8 @@ try {
     assert.equal(blocked.guarded.error, fault < 4 ? 'PriceUnavailable' : 'SequencerUnavailable')
     assert.equal(blocked.guarded.debt, BORROW_PROBE, 'Blocked pricing must not hide debt')
     await assert.rejects(submitAction(client, wallet, owner, run, { type: 'borrow', consumer: 'guarded', amount: BORROW_PROBE, expectedError: 'BorrowExceedsCap' }, codeHash))
+    const expired = await submitAction(client, wallet, owner, run, { type: 'borrow', consumer: 'guarded', amount: BORROW_PROBE }, codeHash).then(() => assert.fail('A blocked borrow must not be signed'), (error) => classifyError(error))
+    assert.deepEqual(expired, { kind: 'reverted', message: guardMessages[fault < 4 ? 'PriceUnavailable' : 'SequencerUnavailable'] })
     await execute({ type: 'borrow', consumer: 'unsafe', amount: BORROW_PROBE })
     await execute({ type: 'borrow', consumer: 'guarded', amount: BORROW_PROBE, expectedError: fault < 4 ? 'PriceUnavailable' : 'SequencerUnavailable' })
     await execute({ type: 'repay', consumer: 'guarded', amount: BORROW_PROBE })
@@ -202,6 +205,34 @@ try {
   await assert.rejects(Promise.resolve().then(() => buildEvidenceReport({ owner, contracts: run, chainId: 31337, chainName: 'Local', source, snapshot, actions: [] })))
   assert.equal(classifyError(new Error('gas exceeds balance')).kind, 'unknown', 'Gas failure must not be classified as a guard')
 
+  // Each documented failure state is described from a real viem error type, never from guessed wording.
+  const failure = (work) => work().then(() => assert.fail('Expected a failure'), (error) => classifyError(error))
+  const signingWith = (thrown) => createWalletClient({ chain: foundry, account: owner, transport: custom({ request: async () => { throw thrown } }, { retryCount: 0 }) })
+  const createRun = (walletClient) => walletClient.writeContract({ address: factory, abi: factoryAbi, functionName: 'createScenario' })
+  assert.equal((await failure(() => createRun(signingWith(Object.assign(new Error('User rejected the request.'), { code: 4001 }))))).kind, 'rejected')
+  assert.equal((await failure(() => createRun(signingWith({ code: 4001, message: 'User denied transaction signature.' })))).kind, 'rejected', 'wallets that throw plain objects')
+  assert.equal(classifyError({ code: 4001, message: 'User rejected the request.' }).kind, 'rejected', 'a raw provider rejection, e.g. while connecting')
+  const refused = createPublicClient({ chain: foundry, transport: http('http://127.0.0.1:9', { retryCount: 0, timeout: 2000 }) })
+  assert.deepEqual(await failure(() => refused.getBlockNumber()), { kind: 'rpc', message: 'RPC request failed. Check the network and retry.' })
+  const limiter = createHttpServer((_, response) => { response.statusCode = 429; response.end('Too Many Requests') })
+  await new Promise((resolve) => limiter.listen(0, '127.0.0.1', resolve))
+  const limited = createPublicClient({ chain: foundry, transport: http(`http://127.0.0.1:${limiter.address().port}`, { retryCount: 0 }) })
+  assert.match((await failure(() => limited.getBlockNumber())).message, /rate-limiting/)
+  limiter.closeAllConnections(); limiter.close()
+  const silent = createHttpServer(() => {})
+  await new Promise((resolve) => silent.listen(0, '127.0.0.1', resolve))
+  const slow = createPublicClient({ chain: foundry, transport: http(`http://127.0.0.1:${silent.address().port}`, { retryCount: 0, timeout: 300 }) })
+  assert.match((await failure(() => slow.getBlockNumber())).message, /did not respond/)
+  silent.closeAllConnections(); silent.close()
+  assert.equal((await failure(() => client.waitForTransactionReceipt({ hash: `0x${'ab'.repeat(32)}`, timeout: 500, pollingInterval: 100 }))).kind, 'timeout')
+  const poor = (await wallet.getAddresses())[7]
+  await client.request({ method: 'anvil_setBalance', params: [poor, '0x0'] })
+  assert.equal((await failure(() => wallet.sendTransaction({ account: poor, to: owner, value: 1n }))).kind, 'funds')
+  assert.equal(classifyError(new InsufficientFundsError()).kind, 'funds', 'recognized by type alone')
+  assert.equal(classifyError(new Error('Insufficient funds for gas * price + value')).kind, 'funds', 'wallets that only send text')
+  const curated = 'Wrong network: switch the wallet to Local sandbox.'
+  assert.deepEqual(classifyError(new Error(curated)), { kind: 'unknown', message: curated }, 'our own messages are not rewritten')
+
   const requests = []
   let currentChain = '0x1'
   globalThis.window = { ethereum: { request: async ({ method, params }) => {
@@ -231,7 +262,7 @@ try {
 
   mkdirSync('work/verification', { recursive: true })
   writeFileSync('work/verification/local-evidence.json', JSON.stringify(report, null, 2) + '\n')
-  console.log(`Execution checks passed: ${records.length} confirmed actions, 15 verified coverage checks, exact guard replays, independent owners, strict evidence rejection and wallet identity checks.`)
+  console.log(`Execution checks passed: ${records.length} confirmed actions, 15 verified coverage checks, exact guard replays, independent owners, strict evidence rejection, wallet identity checks and real-error failure descriptions.`)
 } finally {
   node.kill('SIGTERM')
   await new Promise((resolve) => node.exitCode !== null ? resolve() : node.once('exit', resolve))

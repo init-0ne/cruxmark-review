@@ -12,7 +12,7 @@ import {
 } from './execution.ts'
 import { buildEvidenceReport, evaluateChecks, nextLabStep, observedFault } from './evidence.ts'
 import {
-  assertWalletSession, connectAccount, connectLocalAccount, errorMessage, explorerAddressUrl, explorerTxUrl,
+  assertWalletSession, classifyError, connectAccount, connectLocalAccount, explorerAddressUrl, explorerTxUrl,
   getProvider, getWalletClient, readWalletSession, switchToSelectedChain,
 } from './wallet.ts'
 
@@ -84,6 +84,12 @@ export default function ExecutionPanel() {
     }
   }, [])
 
+  function showFailure(error: unknown) {
+    const failure = classifyError(error)
+    // Declining a wallet prompt is a choice, not a malfunction.
+    setNotice({ tone: failure.kind === 'rejected' ? 'info' : 'error', text: failure.message.slice(0, 350) })
+  }
+
   async function task(label: string, work: (assertCurrent: () => void) => Promise<void>) {
     if (lock.current) return
     lock.current = true
@@ -95,7 +101,7 @@ export default function ExecutionPanel() {
     catch (error) {
       if (generation === epoch.current) {
         if (error instanceof SupersededTransactionError && accountRef.current) { clearSubmission(accountRef.current); setSnapshot(undefined) }
-        setNotice({ tone: 'error', text: errorMessage(error).slice(0, 350) })
+        showFailure(error)
       }
     } finally {
       if (generation === epoch.current) { lock.current = false; setBusy(null) }
@@ -288,7 +294,7 @@ export default function ExecutionPanel() {
       document.body.appendChild(link); link.click(); link.remove()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
       setNotice({ tone: 'success', text: report.result === 'complete' ? 'Complete evidence downloaded. All 15 supported checks have matching recorded actions.' : 'Partial evidence downloaded. Unexecuted checks remain explicitly incomplete.' })
-    } catch (error) { setNotice({ tone: 'error', text: errorMessage(error).slice(0, 350) }) }
+    } catch (error) { showFailure(error) }
   }
 
   const localDemo = chain.id === 31337 && ['127.0.0.1', 'localhost', '[::1]'].includes(window.location.hostname)

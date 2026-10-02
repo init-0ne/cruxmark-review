@@ -7,6 +7,13 @@ import { consumerAbi, executionAbi, factoryAbi, feedAbi, guardAbi, instanceAbi, 
 export const faults = ['Healthy', 'Stock split', 'Paused price', 'Stale price', 'Sequencer down', 'Recovery grace'] as const
 export type Fault = 0 | 1 | 2 | 3 | 4 | 5
 export type GuardError = 'BorrowExceedsCap' | 'PriceUnavailable' | 'SequencerUnavailable' | 'RepayExceedsDebt'
+/** What a decoded contract rejection means for the person running the lab. */
+export const guardMessages: Record<GuardError, string> = {
+  BorrowExceedsCap: 'The contract rejected the borrow: it exceeds the cap for the collateral value it observed.',
+  PriceUnavailable: 'The guard found no usable price: the token is paused or the price is older than the sandbox max age. Healthy inputs expire with chain time, so seed them again if you expected a price.',
+  SequencerUnavailable: 'The guard found the sequencer down or still inside its recovery grace window. Healthy inputs expire with chain time, so seed them again if you expected a price.',
+  RepayExceedsDebt: 'The repayment exceeds the recorded debt. Refresh reads and retry.',
+}
 export interface RunContracts {
   factory: Address
   instance: Address
