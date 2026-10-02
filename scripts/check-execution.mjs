@@ -7,8 +7,65 @@ import { createPublicClient, createWalletClient, http, keccak256, parseEventLogs
 import { foundry } from 'viem/chains'
 import { factoryAbi, BORROW_CORRECT, BORROW_INCORRECT, BORROW_PROBE, DEPOSIT_AMOUNT } from '../src/contracts.ts'
 import { actionOutcome, confirmAction, encodeSubmission, restoreSubmission, loadOwnedRuns, loadRun, readSnapshot, submitAction, SupersededTransactionError, verifyFactory } from '../src/execution.ts'
-import { buildEvidenceReport, serialize, validateEvidenceReport } from '../src/evidence.ts'
+import { buildEvidenceReport, nextLabStep, observedFault, serialize, validateEvidenceReport } from '../src/evidence.ts'
 import { assertWalletSession, connectLocalAccount, classifyError, getProvider, readWalletSession, switchToSelectedChain } from '../src/wallet.ts'
+
+function labSnapshot(fault, debt = 0n) {
+  const now = 20_000n
+  const grace = 3_600n
+  const maxAge = 300n
+  const token = 10n ** 18n
+  const priceAt = fault === 'stale' ? now - maxAge - 1n : now
+  const blocked = fault === 'paused' || fault === 'stale' || fault === 'down' || fault === 'grace'
+  return {
+    block: { number: 3n, hash: `0x${'ab'.repeat(32)}`, timestamp: now },
+    inputs: {
+      multiplier: fault === 'split' ? 2n * token : token, paused: fault === 'paused', priceDecimals: 8,
+      price: { answer: 100n * 10n ** 8n, startedAt: priceAt, updatedAt: priceAt },
+      sequencer: { status: fault === 'down' ? 1n : 0n, startedAt: fault === 'down' || fault === 'grace' ? now : now - grace - 1n, updatedAt: now },
+      maxAge, gracePeriod: grace,
+    },
+    unsafe: { collateral: 100n * token, debt, value: fault === 'split' ? 20_000n * token : 10_000n * token, cap: fault === 'split' ? 12_000n * token : 6_000n * token },
+    guarded: blocked
+      ? { collateral: 100n * token, debt, error: fault === 'down' || fault === 'grace' ? 'SequencerUnavailable' : 'PriceUnavailable' }
+      : { collateral: 100n * token, debt, value: 10_000n * token, cap: 6_000n * token },
+  }
+}
+for (const fault of ['healthy', 'split', 'paused', 'stale', 'down', 'grace']) assert.equal(observedFault(labSnapshot(fault)), fault)
+assert.equal(nextLabStep('split', undefined, []), 'Create an isolated run, then prepare 100 tokens in each consumer.')
+const unprepared = labSnapshot('healthy')
+unprepared.unsafe.collateral = 0n
+unprepared.guarded.collateral = 0n
+assert.equal(nextLabStep('split', unprepared, []), 'Prepare 100 tokens in each consumer.')
+const oversized = labSnapshot('healthy')
+oversized.unsafe.collateral += 1n
+assert.equal(nextLabStep('price', oversized, []), 'This run holds more than 100 tokens in a consumer. Create a fresh isolated run so the example caps stay exact.')
+assert.equal(nextLabStep('split', labSnapshot('healthy'), []), 'Seed Stock split.')
+assert.equal(nextLabStep('split', labSnapshot('split'), []), 'Borrow $12k unsafe.')
+assert.equal(nextLabStep('split', labSnapshot('split', 1n), []), 'Repay all debt, then borrow $12k unsafe.')
+assert.equal(nextLabStep('price', labSnapshot('paused'), []), 'Restore healthy inputs, then borrow $1k healthy control.')
+assert.equal(nextLabStep('sequencer', labSnapshot('down'), []), 'Simulate post-grace control, then borrow $1k healthy control.')
+assert.equal(nextLabStep('price', labSnapshot('healthy'), []), 'Borrow $1k healthy control.')
+assert.equal(nextLabStep('price', labSnapshot('healthy', 6_000n * 10n ** 18n), []), 'Repay all debt, then borrow $1k healthy control.')
+function coverageRecord(action, before, after, status = 'success', replayError) {
+  return { action, before, after, receipt: { status }, ...(replayError ? { replayError } : {}) }
+}
+const probe = 1_000n * 10n ** 18n
+const healthyBefore = labSnapshot('healthy')
+const healthyAfter = structuredClone(healthyBefore)
+healthyAfter.guarded.debt = probe
+const pausedAt = labSnapshot('paused', probe)
+const staleAt = labSnapshot('stale', probe)
+const priceRecords = [
+  coverageRecord({ type: 'borrow', consumer: 'guarded', amount: probe }, healthyBefore, healthyAfter),
+  coverageRecord({ type: 'borrow', consumer: 'unsafe', amount: probe }, pausedAt, structuredClone(pausedAt)),
+  coverageRecord({ type: 'borrow', consumer: 'guarded', amount: probe, expectedError: 'PriceUnavailable' }, pausedAt, pausedAt, 'reverted', 'PriceUnavailable'),
+  coverageRecord({ type: 'borrow', consumer: 'unsafe', amount: probe }, staleAt, structuredClone(staleAt)),
+  coverageRecord({ type: 'borrow', consumer: 'guarded', amount: probe, expectedError: 'PriceUnavailable' }, staleAt, staleAt, 'reverted', 'PriceUnavailable'),
+]
+priceRecords[1].after.unsafe.debt += probe
+priceRecords[3].after.unsafe.debt += probe
+assert.equal(nextLabStep('price', staleAt, priceRecords), 'Repay all debt while guarded pricing stays blocked.')
 
 const server = createServer()
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
@@ -109,6 +166,25 @@ try {
   const report = buildEvidenceReport({ owner, contracts: run, chainId: 31337, chainName: 'Isolated local check', source, snapshot, actions: records })
   assert.equal(report.result, 'complete')
   assert.equal(report.checks.length, 15)
+  function stepAfter(match, family) {
+    const index = records.findIndex(match)
+    assert(index >= 0, 'Expected action was not recorded')
+    const slice = records.slice(0, index + 1)
+    return nextLabStep(family, slice.at(-1).after, slice)
+  }
+  assert.equal(stepAfter((record) => record.action.type === 'deposit' && record.action.consumer === 'guarded', 'split'), 'Seed Stock split.')
+  assert.equal(stepAfter((record) => record.action.type === 'configure' && record.action.fault === 1, 'split'), 'Borrow $12k unsafe.')
+  assert.equal(stepAfter((record) => record.action.type === 'borrow' && record.action.consumer === 'unsafe' && record.action.amount === BORROW_INCORRECT, 'split'), 'Test $12k guarded rejection.')
+  assert.equal(stepAfter((record) => record.action.expectedError === 'BorrowExceedsCap', 'split'), 'Borrow $6k guarded control.')
+  assert.equal(stepAfter((record) => record.action.type === 'borrow' && record.action.amount === BORROW_CORRECT, 'split'), 'Stock split checks are recorded. Switch family or download the evidence JSON.')
+  assert.equal(stepAfter((record) => record.action.type === 'configure' && record.action.fault === 0, 'price'), 'Borrow $1k healthy control.')
+  assert.equal(stepAfter((record) => record.action.type === 'borrow' && record.action.consumer === 'guarded' && record.action.amount === BORROW_PROBE && !record.action.expectedError, 'price'), 'Seed Paused price.')
+  assert.equal(stepAfter((record) => record.action.type === 'configure' && record.action.fault === 2, 'price'), 'Borrow $1k unsafe.')
+  assert.equal(stepAfter((record) => record.action.type === 'borrow' && record.action.consumer === 'unsafe' && record.action.amount === BORROW_PROBE, 'price'), 'Test $1k guarded rejection.')
+  assert.equal(stepAfter((record) => record.action.expectedError === 'PriceUnavailable' && observedFault(record.after) === 'paused', 'price'), 'Seed Stale price.')
+  assert.equal(nextLabStep('split', snapshot, records), 'Stock split checks are recorded. Switch family or download the evidence JSON.')
+  assert.equal(nextLabStep('price', snapshot, records), 'Unavailable-price checks are recorded. Switch family or download the evidence JSON.')
+  assert.equal(nextLabStep('sequencer', snapshot, records), 'Sequencer checks are recorded. Switch family or download the evidence JSON.')
   assert(validateEvidenceReport(JSON.parse(JSON.stringify(report))))
   const bad = (edit) => { const copy = structuredClone(report); edit(copy); assert(!validateEvidenceReport(copy)) }
   bad((r) => { r.actions[0].receipt.status = 'pending' })

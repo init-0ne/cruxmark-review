@@ -10,7 +10,7 @@ import {
   actionOutcome, confirmAction, encodeSubmission, faults, loadOwnedRuns, loadRun, readSnapshot, restoreSubmission, submitAction, SupersededTransactionError, verifyFactory,
   type Action, type ConfirmedAction, type Fault, type RunContracts, type Snapshot, type Submission,
 } from './execution.ts'
-import { buildEvidenceReport, evaluateChecks, observedFault } from './evidence.ts'
+import { buildEvidenceReport, evaluateChecks, nextLabStep, observedFault } from './evidence.ts'
 import {
   assertWalletSession, connectAccount, connectLocalAccount, errorMessage, explorerAddressUrl, explorerTxUrl,
   getProvider, getWalletClient, readWalletSession, switchToSelectedChain,
@@ -287,12 +287,18 @@ export default function ExecutionPanel() {
   const observed = snapshot ? observedFault(snapshot) : undefined
   const priceError = family === 'price' ? 'PriceUnavailable' : 'SequencerUnavailable'
   const pendingHash = pending?.type === 'action' ? pending.value.hash : pending?.hash
+  const guidance = recoveryBlocked
+    ? 'Reconnect to restore the saved transaction before sending another action.'
+    : pending
+      ? 'A transaction is submitted. Wait for its receipt, or retry confirmation. Do not send a duplicate.'
+      : nextLabStep(family, snapshot, records)
 
   return <section id="execute" className="exec-section wrap" aria-labelledby="execute-title">
     <div className="section-heading"><div><p className="eyebrow">EXECUTION LAB</p><h2 id="execute-title">Reproduce. Protect.<br /><span>Keep the evidence.</span></h2></div><p>One supported stock-collateral sandbox.<br />Owned mocks. Synthetic balances. Observed results.</p></div>
     <div className="exec-panel">
       <div className="exec-toolbar"><span className="mono">{chain.name} / {chain.id}</span><span className="example-pill">Controlled testnet sandbox</span></div>
       {!factoryAddress ? <div className="exec-results"><p className="exec-empty">{factoryConfigError || 'Execution deployment is not configured. The local setup guide below explains how to start the sandbox.'}</p><a className="text-link" href="#documentation">Open setup guide ↓</a></div> : <>
+        <p className="exec-next" id="lab-next"><span className="mono">NEXT</span> {guidance}</p>
         <div className="exec-grid">
           <div className="exec-step"><p className="mono exec-label">01 / CONNECT</p><h3>Your test wallet</h3><p>{chain.name}. Test ETH pays gas; collateral and debt are synthetic.</p><div className="exec-row"><button className="button button-primary" onClick={() => connect()} disabled={!!busy || !!pending}>{account ? 'Reconnect wallet' : 'Connect wallet'}</button>{localDemo && <button className="button button-small button-outline" onClick={() => connect(true)} disabled={!!busy || !!pending}>Use local test account</button>}{account && <span className="mono exec-account">{truncateAddress(account)}</span>}</div>{localDemo && <p className="exec-hint">The local option uses a disposable unlocked test account. No wallet installation or key import is needed.</p>}{account && !chainOk && <button className="button button-small button-outline" disabled={!!busy || !!pending} onClick={() => { void task('Switch network', async () => { await switchToSelectedChain(); const session = await readWalletSession(); setChainOk(session.chainId === chain.id) }) }}>Switch to {chain.name}</button>}{chainOk && <p className="exec-hint">Wallet on selected test chain</p>}{chain.id !== 31337 && <a className="text-link" href={chain.id === 46630 ? 'https://faucet.testnet.chain.robinhood.com' : 'https://arbitrum.faucet.dev/'} target="_blank" rel="noreferrer">Get free test ETH ↗</a>}</div>
           <div className="exec-step"><p className="mono exec-label">02 / SELECT</p><h3>Choose the fault family</h3><div className="exec-row"><select aria-label="Scenario family" value={family} disabled={!!busy || !!pending} onChange={(event) => setFamily(event.target.value as typeof family)}><option value="split">Stock split</option><option value="price">Unavailable price</option><option value="sequencer">Sequencer recovery</option></select></div><p>{family === 'split' ? 'An adjusted $100 price must stay $100 after a 2× split.' : family === 'price' ? 'Positive paused and stale prices must reject borrowing.' : 'Down and recovering inputs must reject borrowing until grace expires.'}</p></div>

@@ -36,6 +36,52 @@ export function observedFault(snapshot: Snapshot): 'healthy' | 'split' | 'paused
   return inputs.multiplier === 2n * ONE_E18 ? 'split' : inputs.multiplier === ONE_E18 ? 'healthy' : 'other'
 }
 
+const prepared = 100n * ONE_E18
+const probe = 1_000n * ONE_E18
+
+function canBorrow(position: Snapshot['unsafe'], amount: bigint) {
+  return position.cap !== undefined && position.debt + amount <= position.cap
+}
+
+export function nextLabStep(family: 'split' | 'price' | 'sequencer', snapshot: Snapshot | undefined, records: ConfirmedAction[]): string {
+  if (!snapshot) return 'Create an isolated run, then prepare 100 tokens in each consumer.'
+  const { unsafe, guarded } = snapshot
+  if (unsafe.collateral < prepared || guarded.collateral < prepared) return 'Prepare 100 tokens in each consumer.'
+  if (unsafe.collateral !== prepared || guarded.collateral !== prepared) return 'This run holds more than 100 tokens in a consumer. Create a fresh isolated run so the example caps stay exact.'
+  const done = new Set(evaluateChecks(records).filter((item) => item.status === 'verified').map((item) => item.id))
+  const fault = observedFault(snapshot)
+  if (family === 'split') {
+    if (fault !== 'split') return 'Seed Stock split.'
+    if (!done.has('split: unsafe $12k borrow confirmed')) return unsafe.debt > 0n ? 'Repay all debt, then borrow $12k unsafe.' : 'Borrow $12k unsafe.'
+    if (!done.has('split: guarded $12k borrow rejected')) return 'Test $12k guarded rejection.'
+    if (!done.has('split: guarded $6k control confirmed')) return guarded.debt > 0n ? 'Repay all debt, then borrow $6k guarded control.' : 'Borrow $6k guarded control.'
+    return 'Stock split checks are recorded. Switch family or download the evidence JSON.'
+  }
+  const healthy = family === 'sequencer' ? 'Simulate post-grace control' : 'Restore healthy inputs'
+  const blocked = family === 'price'
+    ? { names: ['paused', 'stale'] as const, seeds: ['Paused price', 'Stale price'], repay: 'unavailable-price: guarded debt repaid while blocked', again: 'Paused price or Stale price', done: 'Unavailable-price checks are recorded. Switch family or download the evidence JSON.' }
+    : { names: ['down', 'grace'] as const, seeds: ['Sequencer down', 'Recovery grace'], repay: 'sequencer: guarded debt repaid while blocked', again: 'Sequencer down or Recovery grace', done: 'Sequencer checks are recorded. Switch family or download the evidence JSON.' }
+  if (!done.has('healthy: guarded $1k control confirmed')) {
+    if (fault !== 'healthy') return `${healthy}, then borrow $1k healthy control.`
+    return canBorrow(guarded, probe) ? 'Borrow $1k healthy control.' : 'Repay all debt, then borrow $1k healthy control.'
+  }
+  for (let index = 0; index < blocked.names.length; index++) {
+    const name = blocked.names[index]
+    if (done.has(`${name}: unsafe $1k borrow confirmed`) && done.has(`${name}: guarded $1k borrow rejected`)) continue
+    if (fault !== name) return `Seed ${blocked.seeds[index]}.`
+    if (!done.has(`${name}: unsafe $1k borrow confirmed`)) {
+      if (canBorrow(unsafe, probe)) return 'Borrow $1k unsafe.'
+      return unsafe.debt > 0n ? 'Repay all debt, then borrow $1k unsafe.' : `Seed ${blocked.seeds[index]}, then borrow $1k unsafe.`
+    }
+    return 'Test $1k guarded rejection.'
+  }
+  if (!done.has(blocked.repay)) {
+    if ((blocked.names as readonly string[]).includes(fault) && guarded.debt > 0n) return 'Repay all debt while guarded pricing stays blocked.'
+    return `${healthy}, borrow $1k healthy control, seed ${blocked.again}, then repay all debt while pricing is blocked.`
+  }
+  return blocked.done
+}
+
 export function evaluateChecks(records: ConfirmedAction[]): EvidenceCheck[] {
   const checks: EvidenceCheck[] = []
   function add(id: string, predicate: (record: ConfirmedAction) => boolean) {

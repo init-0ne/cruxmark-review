@@ -44,6 +44,8 @@ Keep the source private unless the user authorizes publication; the existing Git
 
 ## Observed demo sequence
 
+The lab’s NEXT line names the same sequence from the checks recorded in this browser session. Follow it, or use the order below.
+
 For the split: prepare both positions → seed Stock split → borrow $12k unsafe → test $12k guarded rejection → borrow $6k guarded control → repay. The four split coverage rows should verify from those actual actions.
 
 For unavailable price: restore healthy → borrow $1k guarded to seed repayable debt → seed Paused price → borrow $1k unsafe → test guarded rejection → repay while blocked. Repeat for Stale price, restoring healthy before seeding guarded debt again. Successful pre-fault healthy borrowing is the healthy control.
