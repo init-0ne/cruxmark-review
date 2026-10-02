@@ -195,7 +195,11 @@ export async function confirmAction(client: PublicClient, pending: PendingAction
   const after = await readSnapshot(client, pending.contracts, pending.owner, receipt.blockNumber)
   if (after.block.hash !== receipt.blockHash) throw new Error('Receipt block changed. Refresh confirmation before exporting.')
   let replayError: GuardError | undefined
-  if (receipt.status === 'reverted') {
+  // Replaying a call that failed for lack of gas still decodes the guard's error, so a gas failure would pass as a
+  // rejection. A clean guard revert uses about 13% of the 300,000 limit (39k gas); a starved transaction uses nearly
+  // all of it (a nested-call out-of-gas leaves a few gas over: 29,984 of 30,000), so require at most half. Anything
+  // ambiguous records no reason and verifies nothing.
+  if (receipt.status === 'reverted' && receipt.gasUsed * 2n <= transaction.gas) {
     try {
       await simulateAction(client, pending.contracts, pending.owner, pending.action, receipt.blockNumber)
     } catch (error) {

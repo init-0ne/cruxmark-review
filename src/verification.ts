@@ -65,6 +65,7 @@ export async function verifyReportOnChain(client: PublicClient, report: Evidence
     ])
     if (!receipt || !transaction) { transactions.push(`${tag} is not on this chain`); continue }
     if (receipt.status !== item.receipt.status) transactions.push(`${tag} receipt status is ${receipt.status}, the report says ${item.receipt.status}`)
+    if (receipt.status === 'reverted' && receipt.gasUsed * 2n > transaction.gas) transactions.push(`${tag} reverted after using most of its gas limit, which cannot be told apart from running out of gas`)
     if (receipt.blockNumber !== BigInt(item.receipt.block.number) || receipt.blockHash !== item.receipt.block.hash) transactions.push(`${tag} was mined in a different block`)
     if (!same(receipt.from, owner) || !same(transaction.from, owner)) transactions.push(`${tag} was not sent by the owner`)
     if (!same(receipt.to, item.receipt.to) || !same(transaction.to, item.receipt.to)) transactions.push(`${tag} targets a different contract`)

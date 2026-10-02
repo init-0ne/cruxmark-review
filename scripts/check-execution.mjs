@@ -148,6 +148,17 @@ try {
     await execute({ type: 'repay', consumer: 'guarded', amount: BORROW_PROBE })
     await execute({ type: 'repay', consumer: 'unsafe', amount: BORROW_PROBE })
   }
+  // Recovery grace is still seeded. A borrow that dies for lack of gas is not a guard rejection, even though replaying
+  // the same call at that block reverts with the guard's own error.
+  // 22,000 runs out directly; 30,000 runs out inside the nested call to the guard and leaves 16 gas over, so a
+  // gasUsed < limit test would miss it. A clean rejection costs 38,877 gas.
+  for (const gas of [22_000n, 30_000n]) {
+    const starved = await wallet.writeContract({ address: run.guarded, abi: executionAbi, functionName: 'borrow', args: [BORROW_PROBE], account: owner, gas })
+    const starvedRecord = await confirmAction(client, { hash: starved, chainId: 31337, owner, contracts: run, action: { type: 'borrow', consumer: 'guarded', amount: BORROW_PROBE, expectedError: 'SequencerUnavailable' }, before: await readSnapshot(client, run, owner) })
+    assert.equal(starvedRecord.receipt.status, 'reverted')
+    assert.equal(starvedRecord.replayError, undefined, `out of gas at a ${gas} limit must not be recorded as a guard rejection`)
+    assert.equal(actionOutcome(starvedRecord), 'unexpected')
+  }
   await execute({ type: 'configure', fault: 0 })
   await execute({ type: 'borrow', consumer: 'guarded', amount: BORROW_PROBE })
   await execute({ type: 'repay', consumer: 'guarded', amount: BORROW_PROBE })
@@ -265,6 +276,7 @@ try {
   ]) {
     assert((await verifyReportOnChain(rewriting(edit), structuredClone(report))).some((item) => item.check === 'Events' && item.status === 'fail'), `${label} must not verify`)
   }
+  assert((await verifyReportOnChain(rewriting((r) => (r.status === 'reverted' ? { ...r, gasUsed: 2n ** 40n } : r)), structuredClone(report))).some((item) => item.check === 'Transactions' && item.status === 'fail'), 'a revert that spent its whole gas limit must not verify as a rejection')
   // The rejection reason is re-derived from the chain, whatever the report says.
   const misreported = structuredClone(report)
   misreported.actions.find((item) => item.replayError === 'PriceUnavailable').replayError = 'SequencerUnavailable'
