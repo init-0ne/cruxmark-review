@@ -10,6 +10,8 @@ const robinhoodTestnet = defineChain({
   testnet: true,
 })
 
+/** Hosts treated as this machine. Every check that unlocks disposable test accounts must use this one list. */
+export const loopbackHosts = ['127.0.0.1', 'localhost', '[::1]']
 export const networks = { local: { ...foundry, name: 'Local sandbox' }, 'robinhood-testnet': robinhoodTestnet, 'arbitrum-sepolia': arbitrumSepolia }
 const selected = import.meta.env?.VITE_NETWORK || 'local'
 if (!Object.hasOwn(networks, selected)) throw new Error('VITE_NETWORK must be local, robinhood-testnet, or arbitrum-sepolia')

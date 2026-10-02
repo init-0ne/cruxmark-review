@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { createPublicClient, http, keccak256 } from 'viem'
-import { networks } from '../src/chains.ts'
+import { loopbackHosts, networks } from '../src/chains.ts'
 import { verifyFactory } from '../src/execution.ts'
 
 const { values } = parseArgs({ options: {
@@ -17,7 +17,7 @@ try {
   const rpcUrl = values['rpc-url'] || chain.rpcUrls.default.http[0]
   const rpc = new URL(rpcUrl)
   if (!['http:', 'https:'].includes(rpc.protocol) || rpc.username || rpc.password) throw new Error('Use a public HTTP(S) RPC URL without embedded credentials.')
-  if (values['configure-local'] && (chain.id !== 31337 || !['127.0.0.1', 'localhost', '[::1]'].includes(rpc.hostname))) throw new Error('Automatic browser configuration is restricted to a verified loopback local chain.')
+  if (values['configure-local'] && (chain.id !== 31337 || !loopbackHosts.includes(rpc.hostname))) throw new Error('Automatic browser configuration is restricted to a verified loopback local chain.')
   const revision = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
   const dirty = !!execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim()
   if (dirty && chain.id !== 31337) throw new Error('Public deployment evidence requires a clean committed source revision.')

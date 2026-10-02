@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { encodeFunctionData, isAddress, parseEventLogs, type Address, type Hash } from 'viem'
-import { chain, getPublicClient } from './chains.ts'
+import { chain, getPublicClient, loopbackHosts } from './chains.ts'
 import { buildInfo } from './buildInfo.ts'
 import {
   BORROW_CORRECT, BORROW_INCORRECT, BORROW_PROBE, DEPOSIT_AMOUNT,
@@ -300,7 +300,7 @@ export default function ExecutionPanel() {
     } catch (error) { showFailure(error) }
   }
 
-  const localDemo = chain.id === 31337 && ['127.0.0.1', 'localhost', '[::1]'].includes(window.location.hostname)
+  const localDemo = chain.id === 31337 && loopbackHosts.includes(window.location.hostname)
   const disabled = !account || !chainOk || !run || !!busy || !!pending || recoveryBlocked
   const checks = evaluateChecks(records)
   const visibleChecks = checks.filter((item) => family === 'split' ? item.id.startsWith('split:') : family === 'price' ? /^(paused|stale|healthy|unavailable-price):/.test(item.id) : /^(down|grace|healthy|sequencer):/.test(item.id))

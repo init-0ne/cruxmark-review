@@ -1,5 +1,5 @@
 import { BaseError, createWalletClient, custom, isAddress } from 'viem'
-import { chain } from './chains.ts'
+import { chain, loopbackHosts } from './chains.ts'
 import { contractError, guardMessages } from './execution.ts'
 
 export interface EthereumProvider {
@@ -32,9 +32,8 @@ export async function connectAccount(): Promise<`0x${string}`> {
 
 /** Explicit opt-in to disposable unlocked Anvil accounts; never available on a public site/chain. */
 export async function connectLocalAccount(rpcUrl = import.meta.env?.VITE_RPC_URL?.trim() || chain.rpcUrls.default.http[0]): Promise<`0x${string}`> {
-  const loopback = ['127.0.0.1', 'localhost', '[::1]']
   const url = new URL(rpcUrl)
-  if (chain.id !== 31337 || !loopback.includes(window.location.hostname) || !loopback.includes(url.hostname) || !['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+  if (chain.id !== 31337 || !loopbackHosts.includes(window.location.hostname) || !loopbackHosts.includes(url.hostname) || !['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
     throw new Error('Local test accounts require a loopback app and RPC on chain 31337.')
   }
   const allowed = new Set(['eth_accounts', 'eth_chainId', 'eth_sendTransaction', 'eth_estimateGas', 'eth_gasPrice', 'eth_maxPriorityFeePerGas', 'eth_getBlockByNumber', 'eth_getTransactionCount', 'eth_feeHistory', 'eth_getBalance', 'eth_call', 'eth_blockNumber', 'eth_getTransactionByHash', 'eth_getTransactionReceipt'])
