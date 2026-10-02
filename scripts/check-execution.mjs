@@ -68,6 +68,10 @@ const priceRecords = [
 priceRecords[1].after.unsafe.debt += probe
 priceRecords[3].after.unsafe.debt += probe
 assert.equal(nextLabStep('price', staleAt, priceRecords), 'Repay all debt while guarded pricing stays blocked.')
+// The same stage with no guarded debt yet: every state must name a different next step, never repeat one sentence.
+assert.equal(nextLabStep('price', labSnapshot('stale'), priceRecords), 'Restore healthy inputs, borrow $1k healthy control, seed Paused price or Stale price, then repay all debt while pricing is blocked.')
+assert.equal(nextLabStep('price', labSnapshot('healthy'), priceRecords), 'Borrow $1k healthy control, then seed Paused price or Stale price and repay all debt while pricing is blocked.')
+assert.equal(nextLabStep('price', labSnapshot('healthy', probe), priceRecords), 'Seed Paused price or Stale price, then repay all debt while pricing is blocked.')
 
 const server = createServer()
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))

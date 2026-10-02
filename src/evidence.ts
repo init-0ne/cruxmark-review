@@ -76,7 +76,10 @@ export function nextLabStep(family: 'split' | 'price' | 'sequencer', snapshot: S
     return 'Test $1k guarded rejection.'
   }
   if (!done.has(blocked.repay)) {
+    // Each state names its own next step, so the line changes as the person obeys it instead of repeating one long sentence.
     if ((blocked.names as readonly string[]).includes(fault) && guarded.debt > 0n) return 'Repay all debt while guarded pricing stays blocked.'
+    if (fault === 'healthy' && guarded.debt > 0n) return `Seed ${blocked.again}, then repay all debt while pricing is blocked.`
+    if (fault === 'healthy') return `Borrow $1k healthy control, then seed ${blocked.again} and repay all debt while pricing is blocked.`
     return `${healthy}, borrow $1k healthy control, seed ${blocked.again}, then repay all debt while pricing is blocked.`
   }
   return blocked.done

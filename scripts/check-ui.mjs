@@ -152,6 +152,48 @@ try {
   await notice('No wallet found', 10000)
   stepLog('no local account on a public chain; faucet offered; a missing wallet is explained')
 
+  if (process.env.UI_FULL) {
+    // Opt-in (UI_FULL=1, about 3 minutes): the lab's own NEXT line is the oracle. Click whatever it names until every family
+    // is recorded, then verify the complete report on-chain. A wrong, looping or impossible suggestion fails here.
+    console.log('Scenario 5: follow the lab\'s NEXT guidance through all three families until all 15 checks verify')
+    await open(local.url)
+    await freshRun()
+    const mapped = (next) => {
+      if (/^Prepare 100 tokens/.test(next)) return ['Prepare 100 tokens each', '#execute']
+      if (/^Seed /.test(next)) return [next.slice(5).split(/[.,]/)[0].split(' or ')[0], '.exec-actions']
+      if (/^(Restore healthy inputs|Simulate post-grace control)/.test(next)) return [next.match(/^(Restore healthy inputs|Simulate post-grace control)/)[0], '.exec-actions']
+      if (/^Repay all debt/.test(next)) return ['Repay all debt', '.exec-borrow']
+      const action = next.match(/^(Borrow \$\d+k \w+(?: \w+)?|Test \$\d+k guarded rejection)/)
+      assert(action, `Cannot act on the lab's suggestion: "${next}"`)
+      return [action[1], '.exec-borrow']
+    }
+    let clicks = 0
+    for (const family of ['split', 'price', 'sequencer']) {
+      await page.select('select[aria-label="Scenario family"]', family)
+      for (let guard = 0; guard < 40; guard++) {
+        const next = (await page.text('#lab-next')).replace(/^NEXT\s*/, '').trim()
+        if (/checks are recorded\./.test(next)) break
+        const [label, scope] = mapped(next)
+        await page.click(label, scope)
+        clicks++
+        await pause(200)
+        await page.waitFor(`!document.querySelector('.exec-spinner')`, 90000, `"${label}" to settle`)
+        assert.doesNotMatch(await page.eval(`document.querySelector('.exec-notice.error')?.innerText ?? ''`), /./, `the lab reported an error after "${label}"`)
+        assert(guard < 39, `the lab never reached the end of the ${family} family; last suggestion: "${next}"`)
+      }
+    }
+    await page.eval(`window.__download = null; const make = URL.createObjectURL.bind(URL); URL.createObjectURL = (blob) => { window.__download = blob; return make(blob) }`)
+    await page.click('Download evidence JSON')
+    await page.waitFor('window.__download', 5000, 'evidence download')
+    const full = JSON.parse(await page.eval('window.__download.text()'))
+    assert(validateEvidenceReport(full))
+    assert.equal(full.result, 'complete', JSON.stringify(full.checks.filter((item) => item.status !== 'verified')))
+    assert.equal(full.checks.length, 15)
+    const fullFindings = await verifyReportOnChain(client, full, { state: true })
+    assert.deepEqual(fullFindings.filter((item) => item.status !== 'pass'), [], JSON.stringify(fullFindings))
+    stepLog(`${clicks} guided clicks recorded ${full.actions.length} confirmed actions and all 15 checks; the complete report verifies on-chain`)
+  }
+
   assert.deepEqual(page.logs, [], 'the page must not log errors or exceptions')
   console.log('UI checks passed: split flow with browser-produced evidence verified on-chain, failure wording, transaction recovery and discard, public-build boundary, clean console.')
 } catch (error) {
