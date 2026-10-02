@@ -14,6 +14,7 @@ import {
   truncateAddress,
 } from './contracts'
 import { chain, getPublicClient } from './chains'
+import { buildEvidenceReport } from './evidence'
 import {
   classifyError,
   connectAccount,
@@ -182,6 +183,11 @@ export default function ExecutionPanel() {
       const publicClient = await getPublicClient()
       const receipt = await publicClient.waitForTransactionReceipt({ hash })
       if (receipt.status === 'reverted') {
+        if (opts?.expectedRevert) {
+          recordTx(label, hash, receipt.blockNumber, receipt.status)
+          setNotice({ tone: 'success', text: opts.expectedRevert + ' Confirmed on-chain revert in block ' + receipt.blockNumber.toString() + '.' })
+          return true
+        }
         setNotice({ tone: 'error', text: label + ' reverted on chain. Retry from the current state.' })
         return false
       }
@@ -435,6 +441,42 @@ export default function ExecutionPanel() {
     }
   }
 
+  function handleDownload() {
+    if (!instance || !account || !children || !positions || multiplier === undefined) {
+      setNotice({ tone: 'error', text: 'No complete observed run to export yet.' })
+      return
+    }
+    try {
+      const report = buildEvidenceReport({
+        owner: account,
+        instance,
+        chainId: chain.id,
+        chainName: chain.name,
+        ...(factoryAddress ? { factory: factoryAddress } : {}),
+        token: children.token,
+        unsafe: children.unsafe,
+        guarded: children.guarded,
+        multiplier,
+        deposit: DEPOSIT_AMOUNT,
+        borrows: [BORROW_INCORRECT, BORROW_CORRECT],
+        positions,
+        transactions: txs,
+      })
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'cruxmark-evidence-' + instance.slice(0, 10) + '.json'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+      setNotice({ tone: 'success', text: 'Evidence report downloaded. It contains only confirmed receipts.' })
+    } catch (error) {
+      setNotice({ tone: 'error', text: errorMessage(error).slice(0, 280) })
+    }
+  }
+
   if (!factoryAddress) {
     return (
       <section id="execute" className="exec-section wrap" aria-labelledby="execute-title">
@@ -683,6 +725,16 @@ export default function ExecutionPanel() {
               ))}
             </ul>
           )}
+          <div className="exec-row">
+            <button
+              className="button button-small button-outline"
+              onClick={handleDownload}
+              disabled={!positions || !instance || busy !== null}
+            >
+              Download evidence JSON
+            </button>
+            <small className="exec-hint">Versioned report. Decimal-string amounts. Confirmed receipts only.</small>
+          </div>
         </div>
         <div className="lab-disclosure">
           <span className="info-icon" aria-hidden="true">

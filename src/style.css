@@ -336,6 +336,7 @@ h2 span { color: #9aafbf; }
 .exec-empty { color: #9ab0c1; font-size: 12px; line-height: 1.9; margin-top: 18px; }
 .exec-txs { list-style: none; margin: 20px 0 0; padding: 0; display: grid; gap: 8px; }
 .exec-txs li { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; font-size: 11px; color: #a9bcc9; border-top: 1px solid var(--line); padding-top: 10px; }
+.exec-hint { color: #8ca6b8; font-size: 10px; }
 @media (max-width: 850px) {
   .exec-grid, .exec-grid + .exec-grid { grid-template-columns: 1fr; }
   .exec-step { border-left: 0; border-top: 1px solid var(--line); padding: 22px; }

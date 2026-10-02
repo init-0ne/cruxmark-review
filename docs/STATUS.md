@@ -56,7 +56,15 @@ October 2, 2026:
 
 ## Next concrete task
 
-M4 in `BUILD_PLAN.md`: export a versioned JSON evidence report from observed execution data (chain, contracts, inputs, tx hashes/blocks/receipts, decimal-string amounts). Then M5 public testnet deployment and submission. The user declined the GitHub plugin for this request. Use the authenticated GitHub CLI for authorized repository operations; plugin installation is not a pending setup task.
+M5 in `BUILD_PLAN.md`: public testnet deployment and submission — dedicated test wallet, faucet funds, dry-run and broadcast the existing deployment script on the selected public testnet, confirm receipts/bytecode/ownership, publish the static site with `VITE_NETWORK` and `VITE_FACTORY_ADDRESS`, and verify each scenario from the published app with a fresh run. The user declined the GitHub plugin for this request. Use the authenticated GitHub CLI for authorized repository operations; plugin installation is not a pending setup task.
+
+## Evidence export verification
+
+October 2, 2026:
+
+- `src/evidence.ts` builds a versioned (`cruxmark-evidence/1`) JSON report from observed execution state only: schema/scenario/run IDs, chain, contract addresses, adapter description, max-age/grace assumptions, decimal-string inputs/observations, confirmed transactions with hashes/blocks/receipt status, limitations and reproduction steps. The execution panel offers a download gated on complete observed state.
+- Behavioral checks executed against the compiled module: a 30-digit integer roundtrips exactly through decimal strings, a fully confirmed report validates true, a pending/incomplete receipt validates false, and building with zero transactions throws. `pnpm run check` passed (strict TypeScript, production build, formatting, 30 contract tests).
+- A rejected-signature or unconfirmed hash can never appear as a pass: only confirmed `success` receipts are recorded, and mined reverts on the expected-guarded borrow now surface as confirmed guard evidence. The report hash, if ever added, would be tamper evidence only, not attestation.
 
 ## Live split execution verification
 

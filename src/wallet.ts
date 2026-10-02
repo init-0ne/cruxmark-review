@@ -1,5 +1,5 @@
-import { createPublicClient, createWalletClient, custom, http } from 'viem'
-import { chain, getPublicClient } from './chains'
+import { createWalletClient, custom } from 'viem'
+import { chain } from './chains'
 
 export interface EthereumProvider {
   request: (args: { method: string; params?: unknown }) => Promise<unknown>
@@ -67,14 +67,6 @@ export function getWalletClient(account: `0x${string}`) {
   const provider = getProvider()
   if (!provider) throw new Error('No wallet found.')
   return createWalletClient({ account, chain, transport: custom(provider) })
-}
-
-export async function refreshPublicClient() {
-  return getPublicClient()
-}
-
-export function publicClient() {
-  return createPublicClient({ chain, transport: http(undefined, { timeout: 8000, retryCount: 0 }) })
 }
 
 export type FailureKind =
