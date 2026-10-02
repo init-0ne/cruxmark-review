@@ -148,13 +148,21 @@ export async function submitAction(client: PublicClient, wallet: WalletClient, o
   }
   // Only an exactly decoded expected guard rejection may bypass gas estimation.
   // This deliberately mines a reverted testnet action, with explicit UI disclosure.
-  const gas = action.type !== 'configure' && action.expectedError ? 300_000n : undefined
+  let gas: bigint
+  if (action.type !== 'configure' && action.expectedError) gas = 300_000n
+  else {
+    const estimate = await (request.functionName === 'configureScenario'
+      ? client.estimateContractGas({ ...request, account: owner })
+      : client.estimateContractGas({ ...request, account: owner }))
+    // The next timestamp can change slots that estimation left unchanged.
+    gas = estimate + estimate / 5n + 30_000n
+  }
   if (await wallet.getChainId() !== chainId || !(await wallet.getAddresses()).some((address) => address.toLowerCase() === owner.toLowerCase())) {
     throw new Error('Wallet network or authorized account changed before signing.')
   }
   const hash = await (request.functionName === 'configureScenario'
-    ? wallet.writeContract({ ...request, account: owner, chain: wallet.chain })
-    : wallet.writeContract({ ...request, account: owner, chain: wallet.chain, ...(gas ? { gas } : {}) }))
+    ? wallet.writeContract({ ...request, account: owner, chain: wallet.chain, gas })
+    : wallet.writeContract({ ...request, account: owner, chain: wallet.chain, gas }))
   return { hash, chainId, owner, contracts: run, action, before }
 }
 

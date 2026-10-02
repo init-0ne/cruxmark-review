@@ -19,6 +19,7 @@ Updated October 2, 2026. Repository: `/Users/user64bit/Code/cruxmark`.
 
 - `pnpm run doctor` passes with Node 24.21.0, pnpm 11.24.0 and the project-local Foundry tools.
 - `pnpm run check` passes: production build, strict TypeScript, Solidity formatting, 35 contract tests (including 256-run fuzz tests), and an isolated Anvil execution check.
+- A repeated release check caught a timestamp-dependent gas-estimate failure when configuration changes additional slots in the next block. The shared sender now adds 20% plus 30,000 gas to successful-action estimates; the execution regression advances chain time between every estimate and signing. The full check passes with that deterministic timing regression. Expected revert tests retain their separately bounded 300,000 gas limit.
 - `pnpm run execution:test` deploys a fresh factory and two independent owners. 41 confirmed actions verify all 15 coverage checks: split valuation/caps and borrow outcomes; paused/stale/down/grace unsafe vs guarded behavior; healthy reopening; repayment while pricing is blocked.
 - Pending metadata serialization/restoration, wrong-wallet recovery, wrong-chain receipt confirmation, replaced-action rejection, zero-amount validation and RPC-read failure are also checked.
 - Checks reject wrong-chain/empty/mismatched factory code, cross-owner run reads, wrong expected reverts, incomplete receipts, wrong-owner/cross-chain evidence, calldata/amount changes, duplicate hashes and inconsistent block hashes. A 30-digit integer survives report serialization exactly.

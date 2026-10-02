@@ -56,7 +56,8 @@ try {
   const otherRun = await loadRun(client, factory, otherInstance, other)
   const records = []
   async function execute(action) {
-    const pending = await submitAction(client, wallet, owner, run, action, codeHash)
+    const tickingWallet = new Proxy(wallet, { get(target, key) { return key === 'writeContract' ? async (request) => { await client.request({ method: 'evm_increaseTime', params: [1] }); return wallet.writeContract(request) } : target[key] } })
+    const pending = await submitAction(client, tickingWallet, owner, run, action, codeHash)
     const confirmed = await confirmAction(client, pending)
     assert.equal(actionOutcome(confirmed), action.expectedError ? 'blocked' : 'confirmed', JSON.stringify(serialize(confirmed)))
     records.push(confirmed)
