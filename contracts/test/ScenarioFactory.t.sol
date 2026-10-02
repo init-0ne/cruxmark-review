@@ -118,4 +118,71 @@ contract ScenarioFactoryTest {
         guarded.borrow(6_000e18);
         require(guarded.debt(address(this)) == 6_000e18, "Recovery never opens");
     }
+
+    function testAtomicFaultsClearPreviousInputsAndRefreshPrice() public {
+        ScenarioInstance mine = factory.createScenario();
+        mine.unsafeConsumer().deposit(100e18);
+        mine.guardedConsumer().deposit(100e18);
+        GuardedStockConsumer guarded = mine.guardedConsumer();
+        mine.configureScenario(ScenarioInstance.Fault.Split);
+        require(mine.unsafeConsumer().maxBorrow(address(this)) == 12_000e18, "Split cap");
+        require(guarded.maxBorrow(address(this)) == 6_000e18, "Guarded cap");
+
+        mine.configureScenario(ScenarioInstance.Fault.Paused);
+        require(mine.token().uiMultiplier() == 1e18, "Previous split leaked");
+        vm.expectRevert(PriceGuard.PriceUnavailable.selector);
+        guarded.borrow(1);
+        mine.unsafeConsumer().borrow(1);
+
+        mine.configureScenario(ScenarioInstance.Fault.Stale);
+        require(!mine.token().oraclePaused(), "Previous pause leaked");
+        require(mine.price().updatedAt() == block.timestamp - 301, "Stale boundary");
+        vm.expectRevert(PriceGuard.PriceUnavailable.selector);
+        guarded.borrow(1);
+        mine.unsafeConsumer().borrow(1);
+
+        mine.configureScenario(ScenarioInstance.Fault.SequencerDown);
+        require(mine.price().updatedAt() == block.timestamp, "Previous stale leaked");
+        vm.expectRevert(PriceGuard.SequencerUnavailable.selector);
+        guarded.borrow(1);
+        mine.unsafeConsumer().borrow(1);
+
+        mine.configureScenario(ScenarioInstance.Fault.RecoveryGrace);
+        require(mine.sequencer().answer() == 0, "Previous downtime leaked");
+        vm.expectRevert(PriceGuard.SequencerUnavailable.selector);
+        guarded.borrow(1);
+
+        vm.warp(20_000);
+        mine.configureScenario(ScenarioInstance.Fault.Healthy);
+        require(mine.price().updatedAt() == 20_000, "Healthy did not refresh");
+        guarded.borrow(1_000e18);
+        mine.configureScenario(ScenarioInstance.Fault.Stale);
+        guarded.repay(1_000e18);
+        require(guarded.debt(address(this)) == 0, "Stale blocks repayment");
+        guarded.deposit(1);
+        mine.unsafeConsumer().repay(3);
+        require(mine.unsafeConsumer().debt(address(this)) == 0, "Unsafe repayment");
+    }
+
+    function testConfigureRequiresOwnerAndDoesNotPolluteOtherRun() public {
+        ScenarioInstance mine = factory.createScenario();
+        vm.prank(BOB);
+        ScenarioInstance other = factory.createScenario();
+        vm.prank(BOB);
+        vm.expectRevert(bytes("Only scenario owner"));
+        mine.configureScenario(ScenarioInstance.Fault.Paused);
+        mine.configureScenario(ScenarioInstance.Fault.Paused);
+        require(!other.token().oraclePaused(), "Cross-run pause");
+    }
+
+    function testRepaymentAvailableDuringDownAndRecovery() public {
+        ScenarioInstance mine = factory.createScenario();
+        mine.guardedConsumer().deposit(100e18);
+        mine.guardedConsumer().borrow(2_000e18);
+        mine.configureScenario(ScenarioInstance.Fault.SequencerDown);
+        mine.guardedConsumer().repay(1_000e18);
+        mine.configureScenario(ScenarioInstance.Fault.RecoveryGrace);
+        mine.guardedConsumer().repay(1_000e18);
+        require(mine.guardedConsumer().debt(address(this)) == 0, "Recovery blocks repay");
+    }
 }

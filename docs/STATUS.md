@@ -2,6 +2,12 @@
 
 Updated: October 2, 2026. Project location: `/Users/user64bit/Code/cruxmark`.
 
+## Current hardening pass
+
+- Added owner-only atomic scenario configuration for healthy, split, paused, stale, sequencer-down and recovery-grace inputs. Timestamps come from the executing block; switching faults clears prior faults and refreshes the price. Healthy recovery is explicitly simulated, not an actual chain outage.
+- `pnpm run doctor` passed. Baseline `pnpm run check` passed with 31 tests; after the atomic scenario change it passes with 34 tests, including cross-run isolation, fault transitions, healthy reopening and repayment during unavailable-price/downtime/recovery inputs.
+- Next: repair wallet/RPC identity checks, exact revert classification, block-consistent reads and report provenance before completing all web scenario controls. Public deployment still needs a dedicated signing wallet and faucet funds.
+
 ## Implemented in the foundation
 
 - Product, architecture, build plan, hackathon and submission context.

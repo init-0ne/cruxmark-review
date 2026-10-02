@@ -9,6 +9,17 @@ import {MockFeed, MockStockStatus} from "./mocks/MockInputs.sol";
 /// scenario owner can inject faults; per-account positions keep users apart
 /// inside the shared consumer contracts if an instance is ever reused.
 contract ScenarioInstance {
+    enum Fault {
+        Healthy,
+        Split,
+        Paused,
+        Stale,
+        SequencerDown,
+        RecoveryGrace
+    }
+
+    uint256 public constant MAX_AGE = 300;
+    uint256 public constant GRACE_PERIOD = 3600;
     address public immutable owner;
     MockFeed public immutable price;
     MockFeed public immutable sequencer;
@@ -20,6 +31,7 @@ contract ScenarioInstance {
     event TokenStateUpdated(bool paused, uint256 multiplier);
     event PriceRoundUpdated(int256 answer, uint256 startedAt, uint256 updatedAt);
     event SequencerRoundUpdated(int256 status, uint256 startedAt, uint256 updatedAt);
+    event ScenarioConfigured(Fault fault, uint256 timestamp);
 
     constructor(address runOwner) {
         require(
@@ -32,9 +44,10 @@ contract ScenarioInstance {
         price = new MockFeed(8);
         sequencer = new MockFeed(0);
         token = new MockStockStatus();
-        price.setRound(100e8, block.timestamp, block.timestamp);
-        sequencer.setRound(0, block.timestamp - 3601, block.timestamp);
-        guard = new PriceGuard(address(price), address(sequencer), address(token), 300, 3600);
+        _configure(Fault.Healthy);
+        guard = new PriceGuard(
+            address(price), address(sequencer), address(token), MAX_AGE, GRACE_PERIOD
+        );
         unsafeConsumer = new UnsafeStockConsumer(address(price), address(token));
         guardedConsumer = new GuardedStockConsumer(address(guard));
     }
@@ -42,6 +55,29 @@ contract ScenarioInstance {
     modifier onlyOwner() {
         require(msg.sender == owner, "Only scenario owner");
         _;
+    }
+
+    /// @notice Seed one fault atomically using chain time; clear all other faults.
+    /// @dev RecoveryGrace simulates a recovery now. Healthy simulates recovery
+    /// before the grace window; neither interrupts the real chain sequencer.
+    function configureScenario(Fault fault) external onlyOwner {
+        _configure(fault);
+    }
+
+    function _configure(Fault fault) private {
+        uint256 nowTime = block.timestamp;
+        require(nowTime > GRACE_PERIOD + 1, "Clock not initialized");
+        token.setState(fault == Fault.Paused, fault == Fault.Split ? 2e18 : 1e18);
+        uint256 priceTime = fault == Fault.Stale ? nowTime - MAX_AGE - 1 : nowTime;
+        price.setRound(100e8, priceTime, priceTime);
+        sequencer.setRound(
+            fault == Fault.SequencerDown ? int256(1) : int256(0),
+            fault == Fault.SequencerDown || fault == Fault.RecoveryGrace
+                ? nowTime
+                : nowTime - GRACE_PERIOD - 1,
+            nowTime
+        );
+        emit ScenarioConfigured(fault, nowTime);
     }
 
     /// @notice Inject or clear the split fault: multiplier 1 (healthy) or 2 (split).
