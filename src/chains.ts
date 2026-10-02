@@ -11,10 +11,10 @@ const robinhoodTestnet = defineChain({
 })
 
 const networks = { local: { ...foundry, name: 'Local sandbox' }, 'robinhood-testnet': robinhoodTestnet, 'arbitrum-sepolia': arbitrumSepolia }
-const selected = import.meta.env.VITE_NETWORK || 'local'
+const selected = import.meta.env?.VITE_NETWORK || 'local'
 if (!Object.hasOwn(networks, selected)) throw new Error('VITE_NETWORK must be local, robinhood-testnet, or arbitrum-sepolia')
 export const chain = networks[selected as keyof typeof networks]
-const override = import.meta.env.VITE_RPC_URL?.trim()
+const override = import.meta.env?.VITE_RPC_URL?.trim()
 if (override && !/^https?:\/\//.test(override)) throw new Error('VITE_RPC_URL must be an HTTP(S) URL')
 export async function getPublicClient() {
   const { createPublicClient, http } = await import('viem')

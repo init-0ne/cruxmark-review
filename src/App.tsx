@@ -1,6 +1,8 @@
-import { useState } from 'react'
-import ExecutionPanel from './ExecutionPanel'
-import { chain, getPublicClient } from './chains'
+import { lazy, Suspense, useState } from 'react'
+const ExecutionPanel = lazy(() => import('./ExecutionPanel').catch(() => ({
+  default: () => <section id="execute" className="exec-section wrap"><p role="alert">The execution lab could not load. Check your connection and reload.</p><button className="button button-outline" onClick={() => window.location.reload()}>Reload lab</button></section>,
+})))
+import { chain, getPublicClient } from './chains.ts'
 
 function Arrow({ diagonal = false }: { diagonal?: boolean }) {
   return <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d={diagonal ? 'M6 18 18 6M6 6h12v12' : 'M4 12h15m-6-6 6 6-6 6'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -110,7 +112,7 @@ export default function App() {
     <header className="site-header wrap">
       <a className="brand" href="#" aria-label="Cruxmark home"><Mark />cruxmark<span className="brand-period">.</span></a>
       <nav aria-label="Main navigation"><a href="#lab">The lab</a><a href="#method">How it works</a><a href="#documentation">Documentation</a></nav>
-      <a className="button button-small button-outline header-cta" href="#lab">Explore the lab <Arrow diagonal /></a>
+      <a className="button button-small button-outline header-cta" href="#execute">Run the lab <Arrow diagonal /></a>
     </header>
     <main id="main">
       <section className="hero wrap" aria-labelledby="hero-title">
@@ -118,7 +120,7 @@ export default function App() {
           <p className="eyebrow"><span className="tiny-cross">+</span> THE STOCK-TOKEN COMPATIBILITY LAB</p>
           <h1 id="hero-title">Stress-test<br /><span className="hero-muted">tokenized</span><br /><span className="hero-accent">finance.</span></h1>
           <p className="hero-description">Markets move. Splits happen. Oracles pause.<br className="desktop-break" /> Know how your integration behaves under pressure.</p>
-          <div className="hero-actions"><a className="button button-primary" href="#lab">Explore the scenarios <Arrow /></a><a className="text-link" href="#method"><span className="play-icon" aria-hidden="true">▷</span> See the approach</a></div>
+          <div className="hero-actions"><a className="button button-primary" href="#execute">Run a stress test <Arrow /></a><a className="text-link" href="#method"><span className="play-icon" aria-hidden="true">▷</span> See the approach</a></div>
           <p className="hero-footnote"><span className="signal-dot" />Controlled faults. Clear boundaries. No real funds.</p>
         </div>
         <StressChamber />
@@ -140,27 +142,27 @@ export default function App() {
               <p className="outcome-explanation">{guarded ? scenario.guardNote : scenario.faultNote}</p>
             </div>
           </div>
-          <div className="lab-disclosure"><span className="info-icon" aria-hidden="true">i</span><p>This preview explains expected behavior. <a href="#execute">Run the live split</a> to produce executed outcomes from a wallet-owned scenario.</p></div>
+          <div className="lab-disclosure"><span className="info-icon" aria-hidden="true">i</span><p>This preview explains expected behavior. <a href="#execute">Run the execution lab</a> to produce executed outcomes from a wallet-owned scenario.</p></div>
         </div>
       </section>
 
-      <ExecutionPanel />
+      <Suspense fallback={<section id="execute" className="exec-section wrap"><p role="status">Loading the execution lab…</p></section>}><ExecutionPanel /></Suspense>
 
       <section id="method" className="method-section wrap" aria-labelledby="method-title">
         <div className="section-heading"><div><p className="eyebrow">THE CRUXMARK APPROACH</p><h2 id="method-title">From “should work”<br /><span>to show your work.</span></h2></div><p>A repeatable path from an integration assumption<br className="desktop-break" /> to evidence an engineer can inspect.</p></div>
         <div className="method-steps">
           <article><span className="step-number mono">01 / REPRODUCE</span><div className="step-visual step-fault" aria-hidden="true"><span /><span /><span /></div><h3>Put the fault in focus.</h3><p>Choose a supported integration. Introduce a specific fault with controlled, isolated inputs.</p></article>
           <article><span className="step-number mono">02 / PROTECT</span><div className="step-visual step-guard" aria-hidden="true"><span /><span /><span /></div><h3>Change the logic.</h3><p>Apply a price guard that respects token units, availability, freshness, and recovery windows.</p></article>
-          <article><span className="step-number mono">03 / VERIFY</span><div className="step-visual step-verify" aria-hidden="true"><span /><span /><span /></div><h3>Rerun. Then prove it.</h3><p>Repeat the same scenario. The complete flow will capture observed outcomes and export reproducible evidence.</p></article>
+          <article><span className="step-number mono">03 / VERIFY</span><div className="step-visual step-verify" aria-hidden="true"><span /><span /><span /></div><h3>Rerun. Then prove it.</h3><p>Repeat the same scenario. Capture block-by-block observations and export the confirmed transaction evidence.</p></article>
         </div>
-        <p className="method-note"><span className="signal-dot" />Price guard, borrowing harness and isolated scenarios exist on chain. Evidence export is the next build.</p>
+        <p className="method-note"><span className="signal-dot" />Three fault families. Healthy controls. Exact inputs and receipts in every report.</p>
       </section>
 
       <section id="documentation" className="foundation-section wrap" aria-labelledby="foundation-title">
         <div className="foundation-copy"><p className="eyebrow">OPEN THE BLACK BOX</p><h2 id="foundation-title">Precision starts<br /><span>with transparency.</span></h2><p>Cruxmark is an early-stage compatibility lab for stock-token integrations. The local foundation includes a price guard, owned mock inputs, and executable contract regressions.</p><a className="text-link" href="https://docs.robinhood.com/chain/building-with-stock-tokens/" target="_blank" rel="noreferrer">Read the stock-token semantics <Arrow diagonal /></a><details className="local-guide"><summary>Run the local foundation <span aria-hidden="true">+</span></summary><div><p>Use Node 24 and pnpm 11.24.0 from the project directory.</p><pre><code>pnpm install --frozen-lockfile{'\n'}pnpm run doctor{'\n'}pnpm run check</code></pre><p>Start the local chain and web app in separate terminals:</p><pre><code>pnpm run chain{'\n'}pnpm run dev</code></pre><p>Use the README for deployment instructions. All sandbox assets are test assets.</p></div></details></div>
-        <div className="network-panel"><div className="network-panel-head"><span className="mono">NETWORK READINESS</span><span className="network-icon" aria-hidden="true">◎</span></div><span className="label">Selected network</span><h3>{chain.name}</h3><p className="network-id mono">CHAIN {chain.id} <span>/</span> TEST ASSETS ONLY</p><div className="network-boundary"><span>Price guard + mock inputs</span><span>Local foundation</span></div><div className="network-boundary"><span>Unsafe/guarded execution</span><span>Live below</span></div><div className="network-boundary"><span>Evidence export</span><span>In development</span></div><button className="button button-outline network-button" onClick={checkNetwork} disabled={checking}>{checking ? 'Checking connection…' : 'Check connection'}<Arrow /></button><p className={`network-status ${connected ? 'connected' : ''}`} role="status"><i />{status}</p></div>
+        <div className="network-panel"><div className="network-panel-head"><span className="mono">NETWORK READINESS</span><span className="network-icon" aria-hidden="true">◎</span></div><span className="label">Selected network</span><h3>{chain.name}</h3><p className="network-id mono">CHAIN {chain.id} <span>/</span> TEST ASSETS ONLY</p><div className="network-boundary"><span>Price guard + mock inputs</span><span>Local foundation</span></div><div className="network-boundary"><span>Unsafe/guarded execution</span><span>Execution lab</span></div><div className="network-boundary"><span>Evidence export</span><span>JSON download</span></div><button className="button button-outline network-button" onClick={checkNetwork} disabled={checking}>{checking ? 'Checking connection…' : 'Check connection'}<Arrow /></button><p className={`network-status ${connected ? 'connected' : ''}`} role="status"><i />{status}</p></div>
       </section>
-      <section className="closing wrap" aria-labelledby="closing-title"><div><p className="eyebrow">QUESTION THE ASSUMPTION.</p><h2 id="closing-title">Find the fault.<br /><span>Before the funds.</span></h2></div><div><a className="button button-primary" href="#lab">Explore the lab <Arrow diagonal /></a><p>One supported sandbox. Three defined fault families.<br />A sharper way to test tokenized finance.</p></div></section>
+      <section className="closing wrap" aria-labelledby="closing-title"><div><p className="eyebrow">QUESTION THE ASSUMPTION.</p><h2 id="closing-title">Find the fault.<br /><span>Before the funds.</span></h2></div><div><a className="button button-primary" href="#execute">Run the lab <Arrow diagonal /></a><p>One supported sandbox. Three defined fault families.<br />A sharper way to test tokenized finance.</p></div></section>
     </main>
     <footer className="site-footer wrap"><div><a className="brand" href="#" aria-label="Cruxmark home"><Mark />cruxmark<span className="brand-period">.</span></a><p>Stress-test tokenized finance.</p></div><div className="footer-links"><a href="#lab">Scenarios</a><a href="#documentation">Documentation</a><a href="#method">Our approach</a></div><div className="footer-bottom"><span>© 2026 Cruxmark</span><p>Controlled scenarios are scoped compatibility checks, not a full audit or a security guarantee.</p><span className="mono">BUILT TO QUESTION.</span></div></footer>
   </>

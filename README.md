@@ -4,7 +4,7 @@
 
 Cruxmark is an executable compatibility lab for teams integrating tokenized stocks into lending, trading, or vault products. Reproduce a specific failure, apply a price guard, rerun the same scenario, and export the evidence. Our first target is Robinhood-style stock token semantics on an Arbitrum testnet.
 
-This repository contains a landing page with interactive, explicitly illustrative scenario previews, testnet network configuration, a real RPC connection check, a Solidity price guard, controlled mock inputs, contract regression tests, and a local deployment script. Wallet scenario execution and evidence export are the next build steps.
+This repository ships all three controlled scenario families through an owner-isolated contract sandbox, a browser-wallet execution lab, and versioned JSON evidence. Expected results on the landing page remain labeled illustrations; the execution lab captures actual block reads, actions and receipts. Public testnet deployment and hackathon submission are separate release steps.
 
 ## Start locally
 
@@ -26,7 +26,7 @@ pnpm run chain
 pnpm run dev
 ```
 
-Open the address printed by the web server. The landing page previews the three planned scenario families; its fault/guard comparisons show expectations, not executed results. The **Check connection** button reads the actual configured chain and block. Deploy the contract sandbox while the local chain is running:
+Open the address printed by the web server. The landing page previews the three supported scenario families; its fault/guard comparisons show expectations, not executed results. The **Check connection** button reads the actual configured chain and block. Deploy the contract sandbox while the local chain is running:
 
 ```sh
 pnpm run deploy:local
@@ -58,9 +58,12 @@ Copy `.env.example` to `.env.local` only when changing the selected network. All
 | `pnpm run check` | Web build, Solidity formatting check, contract tests |
 | `pnpm run contracts:test` | Scenario, boundary, authorization, and fuzz checks |
 | `pnpm run contracts:format` | Format Solidity source |
+| `pnpm run execution:test` | Isolated real-EVM wallet/action/report regressions, no wallet secrets |
 | `pnpm run doctor` | Local tool and project-context readiness |
 | `pnpm run chain` | Local EVM, chain ID 31337 |
 | `pnpm run deploy:local` | Deploy our owned test sandbox to localhost |
+
+After deployment set `VITE_FACTORY_ADDRESS` in `.env.local` to the factory address and restart the app. The web build verifies that factory’s runtime hash against its compiled source before allowing scenario actions. Recompile/redeploy after contract changes.
 
 The default network is local. Planned public demo target: Robinhood Chain Testnet (46630). Arbitrum Sepolia (421614) is a fallback if faucet access blocks the demo. Public testnet deployment, site publication, and HackQuest registration/submission have not been performed by this setup. No remote Git repository is created automatically.
 

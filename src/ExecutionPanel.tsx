@@ -1,763 +1,286 @@
-import { useCallback, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { isAddress, parseEventLogs, type Address, type Hash } from 'viem'
+import { chain, getPublicClient } from './chains.ts'
+import { buildInfo } from './buildInfo.ts'
 import {
-  BORROW_CORRECT,
-  BORROW_INCORRECT,
-  DEPOSIT_AMOUNT,
-  MULTIPLIER_HEALTHY,
-  MULTIPLIER_SPLIT,
-  consumerAbi,
-  factoryAddress,
-  factoryAbi,
-  formatUsd18,
-  instanceAbi,
-  tokenAbi,
-  truncateAddress,
-} from './contracts'
-import { chain, getPublicClient } from './chains'
-import { buildEvidenceReport } from './evidence'
+  BORROW_CORRECT, BORROW_INCORRECT, BORROW_PROBE, DEPOSIT_AMOUNT,
+  factoryAbi, factoryAddress, factoryConfigError, formatUsd18, truncateAddress,
+} from './contracts.ts'
 import {
-  classifyError,
-  connectAccount,
-  errorMessage,
-  explorerAddressUrl,
-  explorerTxUrl,
-  getProvider,
-  getWalletClient,
-  readWalletChainId,
-  switchToSelectedChain,
-} from './wallet'
+  actionOutcome, confirmAction, faults, loadOwnedRuns, loadRun, readSnapshot, submitAction, verifyFactory,
+  type Action, type ConfirmedAction, type Fault, type PendingAction, type RunContracts, type Snapshot,
+} from './execution.ts'
+import { buildEvidenceReport, evaluateChecks, observedFault } from './evidence.ts'
+import {
+  assertWalletSession, connectAccount, errorMessage, explorerAddressUrl, explorerTxUrl,
+  getProvider, getWalletClient, readWalletSession, switchToSelectedChain,
+} from './wallet.ts'
 
-type Address = `0x${string}`
-
-interface Children {
-  token: Address
-  unsafe: Address
-  guarded: Address
-}
-
-interface Positions {
-  unsafeValue: bigint
-  unsafeCap: bigint
-  unsafeDebt: bigint
-  guardedValue: bigint
-  guardedCap: bigint
-  guardedDebt: bigint
-}
-
-interface TxRecord {
-  label: string
-  hash: string
-  block: string
-  status: string
-}
-
-interface Notice {
-  tone: 'info' | 'success' | 'error'
-  text: string
-}
-
-function toAddress(value: unknown): Address {
-  return value as Address
-}
+type Pending = { type: 'action'; value: PendingAction } | { type: 'create'; hash: Hash; owner: Address }
+interface Notice { tone: 'info' | 'success' | 'error'; text: string }
 
 export default function ExecutionPanel() {
-  const [account, setAccount] = useState<Address | undefined>()
-  const [chainOk, setChainOk] = useState<boolean | undefined>()
+  const [account, setAccount] = useState<Address>()
+  const [chainOk, setChainOk] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
-  const [notice, setNotice] = useState<Notice | null>(null)
-  const [instance, setInstance] = useState<Address | undefined>()
-  const [children, setChildren] = useState<Children | undefined>()
+  const [notice, setNotice] = useState<Notice>()
   const [instances, setInstances] = useState<Address[]>([])
-  const [multiplier, setMultiplier] = useState<bigint | undefined>()
-  const [positions, setPositions] = useState<Positions | undefined>()
-  const [attempts, setAttempts] = useState<bigint[]>([])
-  const [txs, setTxs] = useState<TxRecord[]>([])
+  const [run, setRun] = useState<RunContracts>()
+  const [snapshot, setSnapshot] = useState<Snapshot>()
+  const [records, setRecords] = useState<ConfirmedAction[]>([])
+  const [pending, setPending] = useState<Pending>()
+  const [family, setFamily] = useState<'split' | 'price' | 'sequencer'>('split')
+  const lock = useRef(false)
+  const epoch = useRef(0)
+  const accountRef = useRef<Address | undefined>(undefined)
 
-  function recordTx(label: string, hash: string, blockNumber: bigint, status: string) {
-    setTxs((prev) =>
-      [{ label, hash, block: blockNumber.toString(), status }, ...prev].slice(0, 6),
-    )
-  }
-
-  const loadInstances = useCallback(async () => {
-    if (!factoryAddress) return
-    const publicClient = await getPublicClient()
-    const list = (await publicClient.readContract({
-      address: factoryAddress,
-      abi: factoryAbi,
-      functionName: 'myScenarios',
-    })) as Address[]
-    setInstances(list)
-  }, [])
-
-  const loadChildren = useCallback(async (instanceAddress: Address) => {
-    const publicClient = await getPublicClient()
-    const [token, unsafe, guarded] = await Promise.all([
-      publicClient.readContract({ address: instanceAddress, abi: instanceAbi, functionName: 'token' }),
-      publicClient.readContract({
-        address: instanceAddress,
-        abi: instanceAbi,
-        functionName: 'unsafeConsumer',
-      }),
-      publicClient.readContract({
-        address: instanceAddress,
-        abi: instanceAbi,
-        functionName: 'guardedConsumer',
-      }),
-    ])
-    setChildren({ token: toAddress(token), unsafe: toAddress(unsafe), guarded: toAddress(guarded) })
-    return { token: toAddress(token), unsafe: toAddress(unsafe), guarded: toAddress(guarded) }
-  }, [])
-
-  const refreshState = useCallback(
-    async (instanceAddress: Address, user: Address, resolved?: Children) => {
-      const kids = resolved ?? (await loadChildren(instanceAddress))
-      const publicClient = await getPublicClient()
-      const [mult, unsafeValue, unsafeCap, unsafeDebt, guardedValue, guardedCap, guardedDebt] =
-        await Promise.all([
-          publicClient.readContract({ address: kids.token, abi: tokenAbi, functionName: 'uiMultiplier' }),
-          publicClient.readContract({
-            address: kids.unsafe,
-            abi: consumerAbi,
-            functionName: 'collateralValue',
-            args: [user],
-          }),
-          publicClient.readContract({
-            address: kids.unsafe,
-            abi: consumerAbi,
-            functionName: 'maxBorrow',
-            args: [user],
-          }),
-          publicClient.readContract({
-            address: kids.unsafe,
-            abi: consumerAbi,
-            functionName: 'debt',
-            args: [user],
-          }),
-          publicClient.readContract({
-            address: kids.guarded,
-            abi: consumerAbi,
-            functionName: 'collateralValue',
-            args: [user],
-          }),
-          publicClient.readContract({
-            address: kids.guarded,
-            abi: consumerAbi,
-            functionName: 'maxBorrow',
-            args: [user],
-          }),
-          publicClient.readContract({
-            address: kids.guarded,
-            abi: consumerAbi,
-            functionName: 'debt',
-            args: [user],
-          }),
-        ])
-      setMultiplier(mult as bigint)
-      setPositions({
-        unsafeValue: unsafeValue as bigint,
-        unsafeCap: unsafeCap as bigint,
-        unsafeDebt: unsafeDebt as bigint,
-        guardedValue: guardedValue as bigint,
-        guardedCap: guardedCap as bigint,
-        guardedDebt: guardedDebt as bigint,
-      })
-    },
-    [loadChildren],
-  )
-
-  async function sendTransaction(
-    label: string,
-    run: (wallet: ReturnType<typeof getWalletClient>) => Promise<`0x${string}`>,
-    opts?: { expectedRevert?: string },
-  ): Promise<boolean> {
-    if (!account) {
-      setNotice({ tone: 'error', text: 'Connect a wallet before sending transactions.' })
-      return false
+  function clearRun() { setRun(undefined); setSnapshot(undefined); setRecords([]); setInstances([]); setPending(undefined) }
+  useEffect(() => {
+    const provider = getProvider()
+    if (!provider?.on) return
+    function invalidate() {
+      epoch.current++
+      clearRun()
+      lock.current = false
+      setBusy(null)
     }
+    function accountsChanged(value: unknown) {
+      if (!accountRef.current) return
+      const next = Array.isArray(value) && typeof value[0] === 'string' && isAddress(value[0]) ? value[0] : undefined
+      if (next?.toLowerCase() === accountRef.current.toLowerCase()) return
+      invalidate()
+      accountRef.current = next
+      setAccount(next)
+      setChainOk(false)
+      setNotice({ tone: 'info', text: 'Wallet account changed. Reconnect to load that wallet’s isolated runs.' })
+    }
+    function chainChanged(value: unknown) {
+      if (!accountRef.current) return
+      invalidate()
+      setChainOk(typeof value === 'string' && /^0x[0-9a-f]+$/i.test(value) && BigInt(value) === BigInt(chain.id))
+      setNotice({ tone: 'info', text: 'Wallet network changed. Reconnect to reload verified runs.' })
+    }
+    function disconnected() { invalidate(); accountRef.current = undefined; setAccount(undefined); setChainOk(false) }
+    provider.on('accountsChanged', accountsChanged)
+    provider.on('chainChanged', chainChanged)
+    provider.on('disconnect', disconnected)
+    return () => {
+      provider.removeListener?.('accountsChanged', accountsChanged)
+      provider.removeListener?.('chainChanged', chainChanged)
+      provider.removeListener?.('disconnect', disconnected)
+      epoch.current++
+    }
+  }, [])
+
+  async function task(label: string, work: (assertCurrent: () => void) => Promise<void>) {
+    if (lock.current) return
+    lock.current = true
+    const generation = epoch.current
+    const assertCurrent = () => { if (generation !== epoch.current) throw new Error('Wallet session changed. Reconnect before continuing.') }
     setBusy(label)
-    setNotice({ tone: 'info', text: label + ' — waiting for wallet signature…' })
-    try {
-      const wallet = getWalletClient(account)
-      const hash = await run(wallet)
-      setNotice({ tone: 'info', text: label + ' submitted. Waiting for confirmation…' })
-      const publicClient = await getPublicClient()
-      const receipt = await publicClient.waitForTransactionReceipt({ hash })
-      if (receipt.status === 'reverted') {
-        if (opts?.expectedRevert) {
-          recordTx(label, hash, receipt.blockNumber, receipt.status)
-          setNotice({ tone: 'success', text: opts.expectedRevert + ' Confirmed on-chain revert in block ' + receipt.blockNumber.toString() + '.' })
-          return true
-        }
-        setNotice({ tone: 'error', text: label + ' reverted on chain. Retry from the current state.' })
-        return false
-      }
-      recordTx(label, hash, receipt.blockNumber, receipt.status)
-      setNotice({ tone: 'success', text: label + ' confirmed in block ' + receipt.blockNumber.toString() + '.' })
-      return true
-    } catch (error) {
-      const classified = classifyError(error)
-      if (classified.kind === 'rejected') {
-        setNotice({ tone: 'error', text: classified.message + ' No transaction was sent.' })
-      } else if (classified.kind === 'reverted' && opts?.expectedRevert) {
-        setNotice({ tone: 'success', text: opts.expectedRevert + ' Observed revert: ' + classified.message })
-        return true
-      } else if (classified.kind === 'reverted') {
-        setNotice({ tone: 'error', text: 'Transaction reverted: ' + classified.message })
-      } else if (classified.kind === 'rpc') {
-        setNotice({ tone: 'error', text: classified.message + ' Use Refresh to retry the read.' })
-      } else {
-        setNotice({ tone: 'error', text: errorMessage(error).slice(0, 280) })
-      }
-      return false
+    setNotice({ tone: 'info', text: label + '…' })
+    try { await work(assertCurrent) }
+    catch (error) {
+      if (generation === epoch.current) setNotice({ tone: 'error', text: errorMessage(error).slice(0, 350) })
     } finally {
-      setBusy(null)
+      if (generation === epoch.current) { lock.current = false; setBusy(null) }
     }
   }
 
-  async function handleConnect() {
-    setBusy('Connect wallet')
-    setNotice(null)
-    try {
-      if (!getProvider()) {
-        setNotice({ tone: 'error', text: 'No wallet found. Install a browser wallet to continue.' })
-        return
-      }
-      const address = await connectAccount()
-      setAccount(address)
-      const walletChain = await readWalletChainId()
-      setChainOk(walletChain === chain.id)
-      if (walletChain !== chain.id) {
-        setNotice({
-          tone: 'error',
-          text: 'Wallet is on chain ' + walletChain + '; this app targets ' + chain.name + ' (' + chain.id + ').',
-        })
-      } else {
-        setNotice({ tone: 'success', text: 'Connected as ' + truncateAddress(address) + '.' })
-      }
-      await loadInstances()
-    } catch (error) {
-      setNotice({ tone: 'error', text: errorMessage(error).slice(0, 280) })
-    } finally {
-      setBusy(null)
-    }
+  async function verifiedClient() {
+    if (!factoryAddress) throw new Error('Deployment is not configured.')
+    const client = await getPublicClient()
+    await verifyFactory(client, factoryAddress, chain.id, buildInfo.factoryCodeHash)
+    return client
   }
 
-  async function handleSwitch() {
-    setBusy('Switch network')
-    try {
-      await switchToSelectedChain()
-      const walletChain = await readWalletChainId()
-      setChainOk(walletChain === chain.id)
-      setNotice(
-        walletChain === chain.id
-          ? { tone: 'success', text: 'Wallet is now on ' + chain.name + '.' }
-          : { tone: 'error', text: 'Wallet is still on chain ' + walletChain + '. Switch and retry.' },
-      )
-    } catch (error) {
-      const classified = classifyError(error)
-      setNotice({ tone: 'error', text: classified.message })
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function handleCreate() {
-    const factory = factoryAddress
-    if (!factory || !account) return
-    const currentAccount: Address = account
-    const ok = await sendTransaction('Create scenario', (wallet) =>
-      wallet.writeContract({ address: factory, abi: factoryAbi, functionName: 'createScenario', account: currentAccount, chain }),
-    )
-    if (!ok) return
-    try {
-      const publicClient = await getPublicClient()
-      const list = (await publicClient.readContract({
-        address: factory,
-        abi: factoryAbi,
-        functionName: 'myScenarios',
-      })) as Address[]
+  function connect() {
+    void task('Connect wallet', async (current) => {
+      const owner = await connectAccount()
+      current()
+      const session = await readWalletSession()
+      current()
+      clearRun()
+      accountRef.current = owner
+      setAccount(owner)
+      setChainOk(session.chainId === chain.id)
+      if (session.chainId !== chain.id) throw new Error(`Wallet is on chain ${session.chainId}. Switch to ${chain.name}, then reconnect.`)
+      const client = await verifiedClient()
+      const list = await loadOwnedRuns(client, factoryAddress!, owner)
+      current()
       setInstances(list)
-      const newest = list[list.length - 1]
-      if (!newest) {
-        setNotice({ tone: 'error', text: 'Scenario transaction confirmed but no instance was returned.' })
+      setNotice({ tone: 'success', text: 'Wallet and factory verified. Choose a scenario family and create a fresh run.' })
+    })
+  }
+
+  async function finishCreate(client: Awaited<ReturnType<typeof getPublicClient>>, hash: Hash, owner: Address, current: () => void) {
+    const receipt = await client.waitForTransactionReceipt({ hash, timeout: 90_000, pollingInterval: 1500 })
+    current()
+    if (receipt.status !== 'success') { setPending(undefined); throw new Error('Scenario creation reverted. No run created.') }
+    const event = parseEventLogs({ abi: factoryAbi, logs: receipt.logs, eventName: 'ScenarioCreated' }).find((item) => item.address.toLowerCase() === factoryAddress?.toLowerCase() && item.args.owner.toLowerCase() === owner.toLowerCase())
+    if (!event) throw new Error('Creation receipt has no matching scenario event. No run accepted.')
+    const contracts = await loadRun(client, factoryAddress!, event.args.instance, owner)
+    const observed = await readSnapshot(client, contracts, owner)
+    const list = await loadOwnedRuns(client, factoryAddress!, owner)
+    current()
+    setRun(contracts); setSnapshot(observed); setRecords([]); setInstances(list); setPending(undefined)
+    setNotice({ tone: 'success', text: 'Fresh isolated run created and verified. Deposit collateral, then seed the chosen fault.' })
+  }
+
+  function create() {
+    if (!account || pending) return
+    void task('Create isolated run', async (current) => {
+      await assertWalletSession(account)
+      const client = await verifiedClient()
+      await client.simulateContract({ address: factoryAddress!, abi: factoryAbi, functionName: 'createScenario', account })
+      current()
+      const hash = await getWalletClient(account).writeContract({ address: factoryAddress!, abi: factoryAbi, functionName: 'createScenario', account, chain })
+      current()
+      setPending({ type: 'create', hash, owner: account })
+      setNotice({ tone: 'info', text: 'Creation submitted. Waiting for its receipt; do not create a duplicate.' })
+      await finishCreate(client, hash, account, current)
+    })
+  }
+
+  function select(address: Address) {
+    if (!account || pending) return
+    setSnapshot(undefined); setRun(undefined); setRecords([])
+    void task('Load owned run', async (current) => {
+      const client = await verifiedClient()
+      if (!instances.includes(address)) throw new Error('Select a run owned by this wallet.')
+      const contracts = await loadRun(client, factoryAddress!, address, account)
+      const observed = await readSnapshot(client, contracts, account)
+      current()
+      setRun(contracts); setSnapshot(observed)
+      setNotice({ tone: 'info', text: 'Run loaded. Earlier browser-session actions are outside this report; execute fresh checks to add evidence.' })
+    })
+  }
+
+  async function execute(action: Action, current: () => void) {
+    if (!account || !run) throw new Error('Connect and create an isolated run first.')
+    await assertWalletSession(account)
+    const client = await verifiedClient()
+    current()
+    const submitted = await submitAction(client, getWalletClient(account), account, run, action, buildInfo.factoryCodeHash)
+    current()
+    setPending({ type: 'action', value: submitted })
+    setNotice({ tone: 'info', text: 'Transaction submitted. Waiting for the receipt; further writes are locked.' })
+    const confirmed = await confirmAction(client, submitted)
+    current()
+    setRecords((previous) => [...previous, confirmed]); setSnapshot(confirmed.after); setPending(undefined)
+    const result = actionOutcome(confirmed)
+    setNotice(result === 'blocked'
+      ? { tone: 'success', text: `Borrow reverted on chain. Same-block replay decoded ${confirmed.replayError}; debt stayed ${formatUsd18(confirmed.after.guarded.debt)}.` }
+      : result === 'confirmed'
+        ? { tone: 'success', text: 'Action confirmed. Inputs and positions captured at block ' + confirmed.after.block.number + '.' }
+        : { tone: 'error', text: 'Observed an unexpected outcome. Receipt retained; this action does not verify the expected check.' })
+    return confirmed
+  }
+
+  function configure(fault: Fault) {
+    if (pending) return
+    void task('Seed ' + faults[fault].toLowerCase(), (current) => execute({ type: 'configure', fault }, current).then(() => {}))
+  }
+  function deposit() {
+    if (!run || !account || pending) return
+    void task('Deposit synthetic collateral', async (current) => {
+      const client = await verifiedClient()
+      const observed = await readSnapshot(client, run, account)
+      current()
+      for (const consumer of ['unsafe', 'guarded'] as const) {
+        const amount = DEPOSIT_AMOUNT - observed[consumer].collateral
+        if (amount > 0n) {
+          const result = await execute({ type: 'deposit', consumer, amount }, current)
+          if (result.receipt.status !== 'success') return
+        }
+      }
+      setNotice({ tone: 'success', text: 'Both positions have at least 100 synthetic tokens. Repeated deposits only top up missing collateral.' })
+    })
+  }
+  function borrow(consumer: 'unsafe' | 'guarded', amount: bigint, expectedError?: 'BorrowExceedsCap' | 'PriceUnavailable' | 'SequencerUnavailable') {
+    if (pending) return
+    void task('Borrow on ' + consumer, (current) => execute({ type: 'borrow', consumer, amount, ...(expectedError ? { expectedError } : {}) }, current).then(() => {}))
+  }
+  function repay() {
+    if (!run || !account || pending) return
+    void task('Repay synthetic debt', async (current) => {
+      const client = await verifiedClient()
+      const observed = await readSnapshot(client, run, account)
+      current()
+      for (const consumer of ['unsafe', 'guarded'] as const) {
+        const amount = observed[consumer].debt
+        if (amount > 0n) {
+          const result = await execute({ type: 'repay', consumer, amount }, current)
+          if (result.receipt.status !== 'success') return
+        }
+      }
+      setNotice({ tone: 'success', text: 'Debt repaid. Repayment stays available while guarded pricing is blocked.' })
+    })
+  }
+  function refresh() {
+    void task(pending ? 'Confirm submitted transaction' : 'Refresh block reads', async (current) => {
+      const client = await verifiedClient()
+      if (pending?.type === 'create') { await finishCreate(client, pending.hash, pending.owner, current); return }
+      if (pending?.type === 'action') {
+        const confirmed = await confirmAction(client, pending.value)
+        current()
+        setRecords((previous) => [...previous, confirmed]); setSnapshot(confirmed.after); setPending(undefined)
+        setNotice({ tone: actionOutcome(confirmed) === 'unexpected' ? 'error' : 'success', text: 'Receipt confirmed. The recorded outcome is ' + actionOutcome(confirmed) + '.' })
         return
       }
-      setInstance(newest)
-      setAttempts([])
-      const kids = await loadChildren(newest)
-      await refreshState(newest, account, kids)
-      setNotice({
-        tone: 'success',
-        text: 'Isolated scenario ready at ' + truncateAddress(newest) + '. Inject the split to begin.',
-      })
-    } catch (error) {
-      setNotice({ tone: 'error', text: 'Created, but reading the new instance failed: ' + errorMessage(error).slice(0, 200) })
-    }
+      if (!run || !account) return
+      setSnapshot(undefined)
+      const observed = await readSnapshot(client, run, account)
+      current()
+      setSnapshot(observed)
+      setNotice({ tone: 'info', text: 'Inputs and positions read at block ' + observed.block.number + '.' })
+    })
   }
-
-  async function handleSelect(address: Address) {
-    if (!account) return
-    setInstance(address)
-    setAttempts([])
-    setBusy('Load scenario')
+  function download() {
+    if (!account || !run || !snapshot || pending) return
     try {
-      const kids = await loadChildren(address)
-      await refreshState(address, account, kids)
-      setNotice({ tone: 'info', text: 'Loaded scenario ' + truncateAddress(address) + '.' })
-    } catch (error) {
-      setNotice({ tone: 'error', text: 'Could not read that scenario: ' + errorMessage(error).slice(0, 200) })
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  async function handleSplit(inject: boolean) {
-    if (!instance || !account) return
-    const label = inject ? 'Inject split (multiplier 2×)' : 'Clear split (multiplier 1×)'
-    const ok = await sendTransaction(label, (wallet) =>
-      wallet.writeContract({
-        address: instance,
-        abi: instanceAbi,
-        functionName: 'setSplitMultiplier',
-        args: [inject ? MULTIPLIER_SPLIT : MULTIPLIER_HEALTHY],
-        account,
-        chain,
-      }),
-    )
-    if (ok) await refreshState(instance, account)
-  }
-
-  async function handleDeposit() {
-    if (!instance || !account || !children) return
-    const okUnsafe = await sendTransaction('Deposit 100 into unsafe', (wallet) =>
-      wallet.writeContract({
-        address: children.unsafe,
-        abi: consumerAbi,
-        functionName: 'deposit',
-        args: [DEPOSIT_AMOUNT],
-        account,
-        chain,
-      }),
-    )
-    if (!okUnsafe) return
-    const okGuarded = await sendTransaction('Deposit 100 into guarded', (wallet) =>
-      wallet.writeContract({
-        address: children.guarded,
-        abi: consumerAbi,
-        functionName: 'deposit',
-        args: [DEPOSIT_AMOUNT],
-        account,
-        chain,
-      }),
-    )
-    if (okGuarded) await refreshState(instance, account, children)
-  }
-
-  async function handleBorrow(kind: 'unsafe-incorrect' | 'guarded-incorrect' | 'guarded-correct') {
-    if (!instance || !account || !children) return
-    if (kind === 'unsafe-incorrect') {
-      const ok = await sendTransaction('Borrow $12,000 on unsafe', (wallet) =>
-        wallet.writeContract({
-          address: children.unsafe,
-          abi: consumerAbi,
-          functionName: 'borrow',
-          args: [BORROW_INCORRECT],
-          account,
-          chain,
-        }),
-      )
-      if (ok) {
-        setAttempts((prev) => [...prev, BORROW_INCORRECT])
-        await refreshState(instance, account, children)
-      }
-    } else if (kind === 'guarded-incorrect') {
-      const ok = await sendTransaction(
-        'Borrow $12,000 on guarded',
-        (wallet) =>
-          wallet.writeContract({
-            address: children.guarded,
-            abi: consumerAbi,
-            functionName: 'borrow',
-            args: [BORROW_INCORRECT],
-            account,
-            chain,
-          }),
-        { expectedRevert: 'Guard rejected the incorrect cap as expected.' },
-      )
-      if (ok) {
-        setAttempts((prev) => [...prev, BORROW_INCORRECT])
-        await refreshState(instance, account, children)
-      }
-    } else {
-      const ok = await sendTransaction('Borrow $6,000 on guarded', (wallet) =>
-        wallet.writeContract({
-          address: children.guarded,
-          abi: consumerAbi,
-          functionName: 'borrow',
-          args: [BORROW_CORRECT],
-          account,
-          chain,
-        }),
-      )
-      if (ok) {
-        setAttempts((prev) => [...prev, BORROW_CORRECT])
-        await refreshState(instance, account, children)
-      }
-    }
-  }
-
-  async function handleRepay() {
-    if (!instance || !account || !children || !positions) return
-    if (positions.unsafeDebt > 0n) {
-      const amount = positions.unsafeDebt
-      const ok = await sendTransaction('Repay unsafe debt', (wallet) =>
-        wallet.writeContract({
-          address: children.unsafe,
-          abi: consumerAbi,
-          functionName: 'repay',
-          args: [amount],
-          account,
-          chain,
-        }),
-      )
-      if (!ok) return
-    }
-    if (positions.guardedDebt > 0n) {
-      const amount = positions.guardedDebt
-      const ok = await sendTransaction('Repay guarded debt', (wallet) =>
-        wallet.writeContract({
-          address: children.guarded,
-          abi: consumerAbi,
-          functionName: 'repay',
-          args: [amount],
-          account,
-          chain,
-        }),
-      )
-      if (!ok) return
-    }
-    await refreshState(instance, account, children)
-  }
-
-  async function handleRefresh() {
-    if (!instance || !account) return
-    setBusy('Refresh reads')
-    try {
-      await refreshState(instance, account)
-      setNotice({ tone: 'info', text: 'Reads refreshed at the latest block.' })
-    } catch {
-      setNotice({ tone: 'error', text: 'RPC read failed. Check the network and retry.' })
-    } finally {
-      setBusy(null)
-    }
-  }
-
-  function handleDownload() {
-    if (!instance || !account || !children || !positions || multiplier === undefined) {
-      setNotice({ tone: 'error', text: 'No complete observed run to export yet.' })
-      return
-    }
-    try {
-      const report = buildEvidenceReport({
-        owner: account,
-        instance,
-        chainId: chain.id,
-        chainName: chain.name,
-        ...(factoryAddress ? { factory: factoryAddress } : {}),
-        token: children.token,
-        unsafe: children.unsafe,
-        guarded: children.guarded,
-        multiplier,
-        deposit: DEPOSIT_AMOUNT,
-        borrows: attempts,
-        positions,
-        transactions: txs,
-      })
-      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
+      const report = buildEvidenceReport({ owner: account, contracts: run, chainId: chain.id, chainName: chain.name, source: buildInfo, snapshot, actions: records })
+      const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }))
       const link = document.createElement('a')
-      link.href = url
-      link.download = 'cruxmark-evidence-' + instance.slice(0, 10) + '.json'
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(url)
-      setNotice({ tone: 'success', text: 'Evidence report downloaded. It contains only confirmed receipts.' })
-    } catch (error) {
-      setNotice({ tone: 'error', text: errorMessage(error).slice(0, 280) })
-    }
+      link.href = url; link.download = `cruxmark-${run.instance.slice(0, 10)}.json`
+      document.body.appendChild(link); link.click(); link.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      setNotice({ tone: 'success', text: `${report.result === 'complete' ? 'Complete' : 'Partial'} evidence downloaded. Unexecuted checks remain explicitly incomplete.` })
+    } catch (error) { setNotice({ tone: 'error', text: errorMessage(error).slice(0, 350) }) }
   }
 
-  if (!factoryAddress) {
-    return (
-      <section id="execute" className="exec-section wrap" aria-labelledby="execute-title">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">LIVE EXECUTION</p>
-            <h2 id="execute-title">
-              Run the split.
-              <br />
-              <span>On chain, not in copy.</span>
-            </h2>
-          </div>
-          <p>
-            Deployment not configured.
-            <br className="desktop-break" /> Set the factory address to enable execution.
-          </p>
-        </div>
-        <div className="exec-panel">
-          <p className="exec-empty">
-            No factory address is configured. Deploy the sandbox with{' '}
-            <span className="mono">pnpm run deploy:local</span>, then set{' '}
-            <span className="mono">VITE_FACTORY_ADDRESS</span> to the deployed{' '}
-            <span className="mono">ScenarioFactory</span> address in{' '}
-            <span className="mono">.env.local</span> and restart the dev server.
-          </p>
-        </div>
-      </section>
-    )
-  }
+  const disabled = !account || !chainOk || !run || !!busy || !!pending
+  const checks = evaluateChecks(records)
+  const visibleChecks = checks.filter((item) => family === 'split' ? item.id.startsWith('split:') : family === 'price' ? /^(paused|stale|healthy|unavailable-price):/.test(item.id) : /^(down|grace|healthy|sequencer):/.test(item.id))
+  const observed = snapshot ? observedFault(snapshot) : undefined
+  const priceError = family === 'price' ? 'PriceUnavailable' : 'SequencerUnavailable'
+  const pendingHash = pending?.type === 'action' ? pending.value.hash : pending?.hash
 
-  const splitActive = multiplier === MULTIPLIER_SPLIT
-  const ready = account && chainOk && instance && children
-
-  return (
-    <section id="execute" className="exec-section wrap" aria-labelledby="execute-title">
-      <div className="section-heading">
-        <div>
-          <p className="eyebrow">LIVE EXECUTION</p>
-          <h2 id="execute-title">
-            Run the split.
-            <br />
-            <span>On chain, not in copy.</span>
-          </h2>
-        </div>
-        <p>
-          Connect a test wallet, create an isolated scenario,
-          <br className="desktop-break" /> then observe the faulty and guarded outcomes.
-        </p>
-      </div>
-      <div className="exec-panel">
+  return <section id="execute" className="exec-section wrap" aria-labelledby="execute-title">
+    <div className="section-heading"><div><p className="eyebrow">EXECUTION LAB</p><h2 id="execute-title">Reproduce. Protect.<br /><span>Keep the evidence.</span></h2></div><p>One supported stock-collateral sandbox.<br />Owned mocks. Synthetic balances. Observed results.</p></div>
+    <div className="exec-panel">
+      <div className="exec-toolbar"><span className="mono">{chain.name} / {chain.id}</span><span className="example-pill">Controlled testnet sandbox</span></div>
+      {!factoryAddress ? <div className="exec-results"><p className="exec-empty">{factoryConfigError || 'Execution deployment is not configured. The local setup guide below explains how to start the sandbox.'}</p><a className="text-link" href="#documentation">Open setup guide ↓</a></div> : <>
         <div className="exec-grid">
-          <div className="exec-step">
-            <p className="mono exec-label">01 / WALLET</p>
-            <h3>Connect a test wallet</h3>
-            <p>
-              Target: {chain.name} (chain {chain.id}). Test assets only. Never connect with real funds.
-            </p>
-            {!account ? (
-              <button className="button button-primary" onClick={handleConnect} disabled={busy !== null}>
-                {busy === 'Connect wallet' ? 'Requesting…' : 'Connect wallet'}
-              </button>
-            ) : (
-              <div className="exec-row">
-                <span className="mono exec-account">{truncateAddress(account)}</span>
-                {chainOk ? (
-                  <span className="exec-badge ok">Correct network</span>
-                ) : (
-                  <button className="button button-small button-outline" onClick={handleSwitch} disabled={busy !== null}>
-                    Switch to {chain.name}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-          <div className="exec-step">
-            <p className="mono exec-label">02 / SCENARIO</p>
-            <h3>Create an isolated run</h3>
-            <p>Each wallet owns its mocks. Faults never cross runs.</p>
-            <div className="exec-row">
-              <button
-                className="button button-outline"
-                onClick={handleCreate}
-                disabled={!account || !chainOk || busy !== null}
-              >
-                {busy === 'Create scenario' ? 'Creating…' : 'Create scenario'}
-              </button>
-              {instances.length > 0 && (
-                <select
-                  aria-label="Select a scenario instance"
-                  value={instance ?? ''}
-                  onChange={(event) => handleSelect(event.target.value as Address)}
-                  disabled={busy !== null}
-                >
-                  <option value="" disabled>
-                    Select instance ({instances.length})
-                  </option>
-                  {instances.map((address) => (
-                    <option key={address} value={address}>
-                      {truncateAddress(address)}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
-            {instance && (
-              <p className="mono exec-address">
-                Instance {truncateAddress(instance)}
-                {explorerAddressUrl(instance) && (
-                  <>
-                    {' '}
-                    <a href={explorerAddressUrl(instance)} target="_blank" rel="noreferrer">
-                      View ↗
-                    </a>
-                  </>
-                )}
-              </p>
-            )}
-          </div>
-          <div className="exec-step">
-            <p className="mono exec-label">03 / FAULT</p>
-            <h3>Inject the split</h3>
-            <p>Multiplier 1× is healthy. 2× reproduces the seeded split.</p>
-            <div className="exec-row">
-              <button
-                className="button button-outline"
-                onClick={() => handleSplit(true)}
-                disabled={!ready || busy !== null}
-              >
-                Inject 2×
-              </button>
-              <button
-                className="button button-small button-outline"
-                onClick={() => handleSplit(false)}
-                disabled={!ready || busy !== null}
-              >
-                Clear to 1×
-              </button>
-              {multiplier !== undefined && (
-                <span className={`exec-badge ${splitActive ? 'fault' : 'ok'}`}>
-                  {splitActive ? 'Split active (2×)' : 'Healthy (1×)'}
-                </span>
-              )}
-            </div>
-          </div>
+          <div className="exec-step"><p className="mono exec-label">01 / CONNECT</p><h3>Your test wallet</h3><p>{chain.name}. Test ETH pays gas; collateral and debt are synthetic.</p><div className="exec-row"><button className="button button-primary" onClick={connect} disabled={!!busy || !!pending}>{account ? 'Reconnect wallet' : 'Connect wallet'}</button>{account && <span className="mono exec-account">{truncateAddress(account)}</span>}</div>{account && !chainOk && <button className="button button-small button-outline" disabled={!!busy || !!pending} onClick={() => { void task('Switch network', async () => { await switchToSelectedChain(); const session = await readWalletSession(); setChainOk(session.chainId === chain.id) }) }}>Switch to {chain.name}</button>}{chainOk && <p className="exec-hint">Wallet on selected test chain</p>}{chain.id !== 31337 && <a className="text-link" href={chain.id === 46630 ? 'https://faucet.testnet.chain.robinhood.com' : 'https://arbitrum.faucet.dev/'} target="_blank" rel="noreferrer">Get free test ETH ↗</a>}</div>
+          <div className="exec-step"><p className="mono exec-label">02 / SELECT</p><h3>Choose the fault family</h3><div className="exec-row"><select aria-label="Scenario family" value={family} disabled={!!busy || !!pending} onChange={(event) => setFamily(event.target.value as typeof family)}><option value="split">Stock split</option><option value="price">Unavailable price</option><option value="sequencer">Sequencer recovery</option></select></div><p>{family === 'split' ? 'An adjusted $100 price must stay $100 after a 2× split.' : family === 'price' ? 'Positive paused and stale prices must reject borrowing.' : 'Down and recovering inputs must reject borrowing until grace expires.'}</p></div>
+          <div className="exec-step"><p className="mono exec-label">03 / ISOLATE</p><h3>Create a fresh run</h3><p>Your wallet alone controls this run’s faults.</p><div className="exec-row"><button className="button button-outline" onClick={create} disabled={!account || !chainOk || !!busy || !!pending}>Create isolated run</button>{instances.length > 0 && <select aria-label="Owned scenario instance" value={run?.instance ?? ''} disabled={!!busy || !!pending} onChange={(event) => select(event.target.value as Address)}><option value="" disabled>Recent owned runs ({instances.length})</option>{instances.map((value) => <option value={value} key={value}>{truncateAddress(value)}</option>)}</select>}</div>{run && <p className="exec-address mono">Instance {explorerAddressUrl(run.instance) ? <a href={explorerAddressUrl(run.instance)} target="_blank" rel="noreferrer">{truncateAddress(run.instance)} ↗</a> : run.instance}</p>}</div>
         </div>
-
         <div className="exec-grid">
-          <div className="exec-step">
-            <p className="mono exec-label">04 / COLLATERAL</p>
-            <h3>Deposit 100 tokens</h3>
-            <p>Synthetic balances. No real transfers.</p>
-            <div className="exec-row">
-              <button className="button button-outline" onClick={handleDeposit} disabled={!ready || busy !== null}>
-                Deposit into both
-              </button>
-              <button className="button button-small button-outline" onClick={handleRefresh} disabled={!ready || busy !== null}>
-                Refresh reads
-              </button>
-            </div>
-          </div>
-          <div className="exec-step">
-            <p className="mono exec-label">05 / BORROW</p>
-            <h3>Attempt the action</h3>
-            <p>The incorrect cap permits what the correct cap rejects.</p>
-            <div className="exec-actions">
-              <button
-                className="button button-small button-outline"
-                onClick={() => handleBorrow('unsafe-incorrect')}
-                disabled={!ready || busy !== null}
-              >
-                Borrow $12k unsafe
-              </button>
-              <button
-                className="button button-small button-outline"
-                onClick={() => handleBorrow('guarded-incorrect')}
-                disabled={!ready || busy !== null}
-              >
-                Borrow $12k guarded
-              </button>
-              <button
-                className="button button-small button-outline"
-                onClick={() => handleBorrow('guarded-correct')}
-                disabled={!ready || busy !== null}
-              >
-                Borrow $6k guarded
-              </button>
-              <button
-                className="button button-small button-outline"
-                onClick={handleRepay}
-                disabled={!ready || busy !== null}
-              >
-                Repay all
-              </button>
-            </div>
-          </div>
+          <div className="exec-step"><p className="mono exec-label">04 / PREPARE</p><h3>100 tokens. Two consumers.</h3><p>Deposit identical synthetic collateral into the seeded unsafe and guarded versions.</p><div className="exec-row"><button className="button button-outline" onClick={deposit} disabled={disabled}>Prepare 100 tokens each</button><button className="button button-small button-outline" onClick={refresh} disabled={!run || !!busy || !!pending}>Refresh reads</button></div>{family !== 'split' && <p className="exec-hint">For repayment evidence: seed healthy inputs, borrow $1k guarded, then seed a fault and repay while pricing is blocked.</p>}</div>
+          <div className="exec-step"><p className="mono exec-label">05 / STRESS</p><h3>Seed the controlled input</h3><div className="exec-actions">{(family === 'split' ? [1] : family === 'price' ? [2, 3] : [4, 5]).map((fault) => <button className="button button-small button-outline" key={fault} onClick={() => configure(fault as Fault)} disabled={disabled}>{faults[fault]}</button>)}<button className="button button-small button-outline" onClick={() => configure(0)} disabled={disabled}>{family === 'sequencer' ? 'Simulate post-grace control' : 'Restore healthy inputs'}</button></div><p className="exec-hint">Each seed clears other faults and uses chain time. Healthy refreshes the $100 mock price.{family === 'sequencer' && ' Post-grace sets a historical recovery timestamp; it does not wait an hour or interrupt the real sequencer.'}</p>{observed && <span className={`exec-badge ${observed === 'healthy' ? 'ok' : 'fault'}`}>Observed input: {observed}</span>}</div>
         </div>
-
-        <div className="exec-results" aria-live="polite" aria-atomic="true">
-          {notice && <p className={`exec-notice ${notice.tone}`}>{notice.text}</p>}
-          {positions ? (
-            <div className="exec-values">
-              <div>
-                <span>Unsafe value</span>
-                <strong>{formatUsd18(positions.unsafeValue)}</strong>
-                <small>
-                  Cap {formatUsd18(positions.unsafeCap)} · Debt {formatUsd18(positions.unsafeDebt)}
-                </small>
-              </div>
-              <div>
-                <span>Guarded value</span>
-                <strong>{formatUsd18(positions.guardedValue)}</strong>
-                <small>
-                  Cap {formatUsd18(positions.guardedCap)} · Debt {formatUsd18(positions.guardedDebt)}
-                </small>
-              </div>
-              <div>
-                <span>Raw evidence</span>
-                <small className="mono">
-                  unsafe {positions.unsafeValue.toString()} / guarded {positions.guardedValue.toString()}
-                </small>
-                <small>Integer USD18 decimal strings. No floating-point math.</small>
-              </div>
-            </div>
-          ) : (
-            <p className="exec-empty">
-              No observed outcomes yet. Create a scenario, inject the split, and deposit to populate executed
-              values. Illustrative previews above are expectations, not results.
-            </p>
-          )}
-          {txs.length > 0 && (
-            <ul className="exec-txs">
-              {txs.map((tx) => (
-                <li key={tx.hash}>
-                  <span>{tx.label}</span>
-                  <span className="mono">
-                    {explorerTxUrl(tx.hash) ? (
-                      <a href={explorerTxUrl(tx.hash)} target="_blank" rel="noreferrer">
-                        {tx.hash.slice(0, 10)}… ↗
-                      </a>
-                    ) : (
-                      tx.hash.slice(0, 10) + '…'
-                    )}{' '}
-                    · block {tx.block} · {tx.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <div className="exec-row">
-            <button
-              className="button button-small button-outline"
-              onClick={handleDownload}
-              disabled={!positions || !instance || busy !== null}
-            >
-              Download evidence JSON
-            </button>
-            <small className="exec-hint">Versioned report. Decimal-string amounts. Confirmed receipts only.</small>
-          </div>
+        <div className="exec-step exec-borrow"><p className="mono exec-label">06 / COMPARE</p><h3>Execute the same action through both paths</h3><div className="exec-actions">{family === 'split' ? <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_INCORRECT)}>Borrow $12k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_INCORRECT, 'BorrowExceedsCap')}>Test $12k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_CORRECT)}>Borrow $6k guarded control</button></> : <><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('unsafe', BORROW_PROBE)}>Borrow $1k unsafe</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE, priceError)}>Test $1k guarded rejection</button><button className="button button-small button-outline" disabled={disabled} onClick={() => borrow('guarded', BORROW_PROBE)}>Borrow $1k healthy control</button></>}<button className="button button-small button-outline" disabled={disabled} onClick={repay}>Repay all debt</button></div><p className="exec-hint">Rejection tests deliberately submit a reverted transaction after an exact guard check. Your wallet will ask to sign; this consumes test ETH for gas. A rejected signature verifies no check.</p></div>
+        <div className="exec-results">
+          <div role="status" aria-live="polite" aria-atomic="true">{notice && <p className={`exec-notice ${notice.tone}`}>{busy && <span className="exec-spinner" aria-hidden="true" />}{notice.text}</p>}</div>
+          {pendingHash && <div className="exec-pending"><p>Submitted transaction {explorerTxUrl(pendingHash) ? <a href={explorerTxUrl(pendingHash)} target="_blank" rel="noreferrer">{truncateAddress(pendingHash)} ↗</a> : <span className="mono">{pendingHash}</span>}. Confirmation is incomplete; no result is counted.</p><button className="button button-small button-outline" disabled={!!busy} onClick={refresh}>Retry confirmation</button></div>}
+          {snapshot ? <><p className="exec-hint mono">OBSERVED BLOCK {snapshot.block.number.toString()} · CHAIN TIME {snapshot.block.timestamp.toString()}</p><div className="exec-values">{(['unsafe', 'guarded'] as const).map((consumer) => <div key={consumer}><span>{consumer === 'unsafe' ? 'Seeded unsafe' : 'Guarded'} value</span><strong>{snapshot[consumer].value === undefined ? 'Blocked' : formatUsd18(snapshot[consumer].value!)}</strong><small>{snapshot[consumer].error || `Cap ${formatUsd18(snapshot[consumer].cap!)}`}</small><small>Debt {formatUsd18(snapshot[consumer].debt)} · Collateral {(snapshot[consumer].collateral / 10n ** 18n).toString()} tokens</small></div>)}<div><span>Input evidence</span><small className="mono">price {snapshot.inputs.price.answer.toString()} / {snapshot.inputs.priceDecimals} decimals<br />updated {snapshot.inputs.price.updatedAt.toString()}<br />multiplier {snapshot.inputs.multiplier.toString()}<br />paused {String(snapshot.inputs.paused)}<br />sequencer {snapshot.inputs.sequencer.status.toString()} / started {snapshot.inputs.sequencer.startedAt.toString()}</small></div></div></> : <p className="exec-empty">Create or select an owned run to read inputs and positions. Results appear only after real contract reads.</p>}
+          <div className="exec-checks"><p className="mono exec-label">OBSERVED COVERAGE · {visibleChecks.filter((item) => item.status === 'verified').length}/{visibleChecks.length}</p><ul>{visibleChecks.map((item) => <li key={item.id}><span className={`exec-badge ${item.status === 'verified' ? 'ok' : ''}`}>{item.status === 'verified' ? 'Verified' : 'Not executed'}</span><span>{item.id.split(': ')[1]}</span></li>)}</ul></div>
+          {records.length > 0 && <details className="exec-history"><summary>Confirmed action history ({records.length})</summary><ul className="exec-txs">{records.map((record) => <li key={record.hash}><span>{record.action.type === 'configure' ? faults[record.action.fault] : `${record.action.type} ${record.action.consumer}`} · {actionOutcome(record)}{record.replayError && ` (${record.replayError})`}</span><span className="mono">{explorerTxUrl(record.hash) ? <a href={explorerTxUrl(record.hash)} target="_blank" rel="noreferrer">{truncateAddress(record.hash)} ↗</a> : truncateAddress(record.hash)} · block {record.receipt.block.number.toString()} · {record.receipt.status}</span></li>)}</ul></details>}
+          <div className="exec-row"><button className="button button-outline" onClick={download} disabled={!snapshot || records.length === 0 || !!busy || !!pending}>Download evidence JSON</button><small className="exec-hint">Source revision, exact integer inputs, block snapshots and receipt outcomes. Partial runs stay partial.</small></div>
         </div>
-        <div className="lab-disclosure">
-          <span className="info-icon" aria-hidden="true">
-            i
-          </span>
-          <p>
-            Executed results only: badges and values above derive from confirmed receipts and contract reads.
-            A rejected signature is not a guard success. A hash without a receipt is pending, not pass.
-          </p>
-        </div>
-      </div>
-    </section>
-  )
+      </>}
+      <div className="lab-disclosure"><span className="info-icon" aria-hidden="true">i</span><p>Controlled sandbox only. These checks do not establish production compatibility or describe a discovered exploit. Guarded debt remains readable and repayable while pricing is blocked.</p></div>
+    </div>
+  </section>
 }

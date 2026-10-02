@@ -1,5 +1,5 @@
-import { createWalletClient, custom } from 'viem'
-import { chain } from './chains'
+import { createWalletClient, custom, isAddress } from 'viem'
+import { chain } from './chains.ts'
 
 export interface EthereumProvider {
   request: (args: { method: string; params?: unknown }) => Promise<unknown>
@@ -20,16 +20,36 @@ export function getProvider(): EthereumProvider | undefined {
 export async function connectAccount(): Promise<`0x${string}`> {
   const provider = getProvider()
   if (!provider) throw new Error('No wallet found. Install a browser wallet to continue.')
-  const accounts = (await provider.request({ method: 'eth_requestAccounts' })) as string[]
-  if (!accounts || accounts.length === 0) throw new Error('No accounts authorized in the wallet.')
-  return accounts[0] as `0x${string}`
+  await provider.request({ method: 'eth_requestAccounts' })
+  const session = await readWalletSession()
+  if (!session.account) throw new Error('No accounts authorized in the wallet.')
+  return session.account
+}
+
+export async function readWalletSession() {
+  const provider = getProvider()
+  if (!provider) throw new Error('No wallet found.')
+  const accounts = await provider.request({ method: 'eth_accounts' })
+  if (!Array.isArray(accounts) || accounts.some((value) => typeof value !== 'string' || !isAddress(value))) {
+    throw new Error('Wallet returned invalid accounts.')
+  }
+  return { account: accounts[0] as `0x${string}` | undefined, chainId: await readWalletChainId() }
+}
+
+export async function assertWalletSession(account: `0x${string}`) {
+  const session = await readWalletSession()
+  if (session.chainId !== chain.id) throw new Error('Wrong network: switch the wallet to ' + chain.name + '.')
+  if (session.account?.toLowerCase() !== account.toLowerCase()) throw new Error('Wallet account changed. Reconnect before signing.')
 }
 
 export async function readWalletChainId(): Promise<number> {
   const provider = getProvider()
   if (!provider) throw new Error('No wallet found.')
-  const hex = (await provider.request({ method: 'eth_chainId' })) as string
-  return Number.parseInt(hex, 16)
+  const hex = await provider.request({ method: 'eth_chainId' })
+  if (typeof hex !== 'string' || !/^0x[0-9a-f]+$/i.test(hex)) throw new Error('Wallet returned an invalid chain ID.')
+  const id = Number(BigInt(hex))
+  if (!Number.isSafeInteger(id)) throw new Error('Wallet chain ID exceeds the supported range.')
+  return id
 }
 
 export async function switchToSelectedChain(): Promise<void> {
@@ -42,10 +62,9 @@ export async function switchToSelectedChain(): Promise<void> {
       params: [{ chainId: hexId }],
     })
   } catch (error) {
-    const message = errorMessage(error)
     // 4902: chain not added to the wallet. Add test/local chains on demand.
-    if (!message.includes('4902') && !message.toLowerCase().includes('not added')) throw error
-    const rpc = (import.meta.env.VITE_RPC_URL as string | undefined)?.trim()
+    if (errorCode(error) !== 4902) throw error
+    const rpc = (import.meta.env?.VITE_RPC_URL as string | undefined)?.trim()
     await provider.request({
       method: 'wallet_addEthereumChain',
       params: [
@@ -60,7 +79,14 @@ export async function switchToSelectedChain(): Promise<void> {
         },
       ],
     })
+    await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: hexId }] })
   }
+}
+
+function errorCode(error: unknown): number | undefined {
+  if (!error || typeof error !== 'object') return undefined
+  const value = error as { code?: unknown; cause?: unknown }
+  return typeof value.code === 'number' ? value.code : value.cause === error ? undefined : errorCode(value.cause)
 }
 
 export function getWalletClient(account: `0x${string}`) {
@@ -84,7 +110,7 @@ export function classifyError(error: unknown): { kind: FailureKind; message: str
     lower.includes('user rejected') ||
     lower.includes('user denied') ||
     lower.includes('rejected the request') ||
-    lower.includes('4001')
+    errorCode(error) === 4001
   ) {
     return { kind: 'rejected', message: 'Signature rejected in the wallet. No transaction was sent.' }
   }
@@ -93,7 +119,6 @@ export function classifyError(error: unknown): { kind: FailureKind; message: str
   }
   if (
     lower.includes('revert') ||
-    lower.includes('exceeds') ||
     lower.includes('borrowexceedscap') ||
     lower.includes('priceunavailable') ||
     lower.includes('sequencerunavailable') ||

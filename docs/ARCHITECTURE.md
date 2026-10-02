@@ -2,7 +2,7 @@
 
 ## Current foundation and intended flow
 
-The current app is a static React/TypeScript landing page using Vite and Viem. Its three interactive scenario previews show explicitly illustrative expected behavior, not executed outcomes. It checks a selected RPC's actual chain ID and block; RPC client code loads only when a connection check is requested. The contract foundation consists of a read-only `PriceGuard`, owner-controlled mock feed/token-status inputs, tests, and `DeploySandbox`. It has no ERC-20 custody, borrowing, external integration scanner, report registry, or scenario runner UI yet.
+The app is a static React/TypeScript/Vite wallet lab using Viem. The landing-page previews remain explicitly illustrative. The execution panel runs all three families against wallet-owned `ScenarioInstance` contracts created by `ScenarioFactory`; consumers track synthetic collateral/debt with no token transfers. Reads and transaction evidence flow through the same `src/execution.ts` module used by the real-Anvil regression check. Reports use `cruxmark-evidence/2` and source provenance embedded during the build.
 
 ```mermaid
 flowchart LR
@@ -16,7 +16,7 @@ flowchart LR
     E --> J[Downloadable evidence report]
 ```
 
-The unsafe consumer and runner in this diagram are planned. Keep deployment evidence separate from the diagram. The runtime default is local Anvil; the intended public demo is Robinhood Chain Testnet. Arbitrum Sepolia is a deployment fallback, using the same mocks and accurately described scope.
+The diagram is implemented locally. Deployment evidence still needs separate verification on each network. The runtime default is local Anvil; the intended public demo is Robinhood Chain Testnet. Arbitrum Sepolia is a deployment fallback, using the same mocks and accurately described scope.
 
 ## Input and unit contract
 
@@ -33,7 +33,7 @@ PriceGuard reads feed decimals each time, supports 0–18, rejects invalid/nonpo
 
 Feed semantics, including price units and the pause flag, are documented in [Robinhood's oracle guide](https://docs.robinhood.com/chain/oracles-and-price-feeds/). Recovery checks follow the model in [Chainlink's L2 sequencer guide](https://docs.chain.link/data-feeds/l2-sequencer-feeds). These checks cannot make a dishonest upstream feed truthful.
 
-The prototype accepts an 18-decimal stock balance and does checked multiplication before division. An extreme product reverts rather than wrapping. Supporting other asset decimals or wider balances requires a reviewed unit adapter and vetted full-precision multiplication. It does not validate custody or prove that the supplied balance belongs to an account; a future consumer must read real balance state.
+The prototype accepts an 18-decimal stock balance and does checked multiplication before division. An extreme product reverts rather than wrapping. Supporting other asset decimals or wider balances requires a reviewed unit adapter and vetted full-precision multiplication. It does not validate custody or prove that the supplied balance belongs to an account; a future custody integration must read real token balance state.
 
 ## Supported scenarios
 
@@ -45,13 +45,13 @@ The prototype accepts an 18-decimal stock balance and does checked multiplicatio
 
 Do not claim that a test transaction was mined during a genuine sequencer outage. We inject a controlled sequencer-status input while our test chain is functioning. In a real outage normal L2 submission may be unavailable. The test checks the consuming contract's behavior, not an outage of the chain itself.
 
-The current split test seeds the incorrect formula in the test and compares values. The next increment must move it into an explicit unsafe consumer and demonstrate a transaction/state change. Current unavailable/recovery checks already execute the guard on the local EVM.
+All three families execute borrowing actions through actual unsafe/guarded consumers. Atomic configuration uses the executing chain timestamp, clears other faults and refreshes the price. The healthy sequencer control deliberately seeds a historical recovery timestamp; it does not simulate downtime of the actual chain.
 
-## Scenario ownership and future lending harness
+## Scenario ownership and synthetic borrowing
 
-Each public run should receive isolated owned inputs, by deploying a small scenario instance or a minimal factory if reuse actually helps. A single shared oracle lets one user overwrite another's demonstration and is unacceptable for public run evidence. Current mock setters reject callers other than their deployer. Fault injection is available only in the owned sandbox; it must never mutate issuer contracts.
+Each run receives an owned scenario instance from the factory, with its own feeds, token status, guard and two consumers. A single shared oracle lets one user overwrite another's demonstration and is unacceptable for public run evidence. Current mock setters reject callers other than their deployer. Fault injection is available only in the owned sandbox; it must never mutate issuer contracts.
 
-The next consumer can track synthetic collateral/debt for the demonstration; any genuine token transfer must use a reviewed ERC-20 implementation and transfer handling. Apply price checks to **borrow** and any other unsafe price-dependent action. Keep **repay** and safe deposits callable without a price read. Do not make a global pause that prevents someone reducing debt. Add unauthorized mutation, reentrancy, duplicate action and balance accounting tests if custody is introduced.
+The consumers track per-account synthetic collateral/debt for the demonstration; any genuine token transfer must use a reviewed ERC-20 implementation and transfer handling. Apply price checks to **borrow** and any other unsafe price-dependent action. Keep **repay** and safe deposits callable without a price read. Do not make a global pause that prevents someone reducing debt. Add unauthorized mutation, reentrancy, duplicate action and balance accounting tests if custody is introduced.
 
 ## Evidence contract
 
@@ -82,4 +82,14 @@ Reports are downloadable files first. A registry hash is optional and not needed
 
 Future adapter/API work must check upstream errors, null vs false fields, effective timestamps, trading windows, feed errors and decimal boundaries. Do not claim live Robinhood sequencer-feed support on this testnet until its actual address and ABI are verified; a mocked recovery check is the supported initial scenario.
 
-Meaningful checks now: seeded split regression, stale/paused positive prices, sequencer down/uninitialized/future/recovery boundaries, healthy controls, invalid prices/decimals/configuration, owner-only fault mutation, and fuzzed independence from the multiplier. The lending integration and report checks belong to the next milestones.
+Meaningful checks now: seeded split regression, stale/paused positive prices, sequencer down/uninitialized/future/recovery boundaries, healthy controls, invalid prices/decimals/configuration, owner-only fault mutation, and fuzzed independence from the multiplier. The local execution suite verifies the lending harness and report consistency against actual transactions.
+
+## Execution and report trust
+
+Before signing, verify the selected RPC chain, wallet chain/account and exact compiled factory runtime hash. Accept creation only from a successful receipt with the factory’s matching `ScenarioCreated` event; verify owner and child bytecode before loading. Wallet account/network/disconnect events invalidate current run state. A synchronous operation lock covers multi-transaction deposit/repayment sequences. Deposits top up each observed balance to 100 synthetic tokens rather than adding another 100 after a partial retry.
+
+Every snapshot reads inputs, collateral, debt, valuation and caps at one recorded block number, then checks that block’s hash again. Known guard reverts make valuation unavailable without hiding debt. Unknown errors, RPC failures and reorgs invalidate the observation. Successful and reverted receipts are retained for the selected run, with matching calldata and before/after state.
+
+An expected rejection is preflight-decoded using the contract ABI. Only the exact expected guard error allows a deliberately reverting borrow to be signed with bounded gas. A reverted receipt alone never proves the reason: the report explicitly identifies its reason as a same-block `eth_call` replay, which uses end-of-block state and is not a transaction trace. Coverage additionally checks recorded input conditions and debt changes. Report validation checks structure and internal consistency; it is not independent RPC verification, attestation or L1 finality.
+
+Reports include all captured actions and observed coverage. Reloading/selecting a run without its earlier browser-session history cannot manufacture earlier outcomes. Source/compiler/runtime hash are embedded by the build; dirty builds are explicitly labeled. Public release evidence must come from a clean source revision and matching deployed runtime.

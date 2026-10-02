@@ -2,7 +2,11 @@
 
 Build a complete demonstration before adding breadth. This is the execution order; each milestone must leave a runnable result and update `STATUS.md`.
 
-## M0 — Foundation (this setup)
+## Progress
+
+M0–M4 are implemented and verified locally: 34 contract regressions and a 41-action isolated-Anvil check cover all 15 observed suite checks. Browser signing/public runs and M5 remain release gates. See `STATUS.md` for the actual verified state.
+
+## M0 — Foundation
 
 Deliver project instructions/skill routing, product and event context, pinned packages, static app, network config, tested price guard and mocks, local deployment script, and CI configuration. Confirm install, doctor, build/tests, local chain and deployment. Public hosting/testnet/submission are separate states.
 

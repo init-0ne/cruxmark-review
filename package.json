@@ -4,18 +4,21 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.24.0",
-  "engines": { "node": ">=24 <25" },
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "tsc --noEmit && vite build",
+    "dev": "forge build --root contracts && vite --host 127.0.0.1",
+    "build": "forge build --root contracts && tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "contracts:build": "forge build --root contracts",
     "contracts:test": "forge test --root contracts -vv",
     "contracts:format": "forge fmt --root contracts",
-    "check": "pnpm run build && forge fmt --root contracts --check && pnpm run contracts:test",
+    "check": "pnpm run build && forge fmt --root contracts --check && pnpm run contracts:test && pnpm run execution:test",
     "doctor": "node scripts/doctor.mjs",
     "chain": "anvil --host 127.0.0.1 --chain-id 31337",
-    "deploy:local": "forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast"
+    "deploy:local": "forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url http://127.0.0.1:8545 --unlocked --sender 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 --broadcast",
+    "execution:test": "node scripts/check-execution.mjs"
   },
   "dependencies": {
     "react": "19.3.0",
