@@ -2,6 +2,7 @@
 pragma solidity 0.8.30;
 
 import {PriceGuard} from "../src/PriceGuard.sol";
+import {GuardedStockConsumer, UnsafeStockConsumer} from "../src/ScenarioConsumers.sol";
 import {MockFeed, MockStockStatus} from "../src/mocks/MockInputs.sol";
 
 interface VmDeploy {
@@ -14,7 +15,14 @@ contract DeploySandbox {
 
     function run()
         external
-        returns (PriceGuard guard, MockFeed price, MockFeed sequencer, MockStockStatus token)
+        returns (
+            PriceGuard guard,
+            MockFeed price,
+            MockFeed sequencer,
+            MockStockStatus token,
+            UnsafeStockConsumer unsafeConsumer,
+            GuardedStockConsumer guardedConsumer
+        )
     {
         require(
             block.chainid == 31337 || block.chainid == 46630 || block.chainid == 421614,
@@ -28,6 +36,8 @@ contract DeploySandbox {
         price.setRound(100e8, block.timestamp, block.timestamp);
         sequencer.setRound(0, block.timestamp - 3601, block.timestamp);
         guard = new PriceGuard(address(price), address(sequencer), address(token), 300, 3600);
+        unsafeConsumer = new UnsafeStockConsumer(address(price), address(token));
+        guardedConsumer = new GuardedStockConsumer(address(guard));
         vm.stopBroadcast();
     }
 }

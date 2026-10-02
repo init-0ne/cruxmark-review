@@ -10,7 +10,8 @@ Updated: October 2, 2026. Project location: `/Users/user64bit/Code/cruxmark`.
 - Pinned React/TypeScript/Vite/Viem workspace with local/testnet configuration and real RPC connection check; RPC library loads on demand.
 - pnpm 11.24.0 migration: imported lockfile preserves pinned package versions; scripts, doctor, CI and setup/deployment docs use pnpm. Only the three Foundry installation scripts are allowed, with exact-version release-age exceptions for the already-pinned Viem/Vite packages.
 - Solidity price guard, owned mock fault inputs and contract regression/fuzz checks.
-- Local sandbox deployment script, test-network allowlist and ignored secrets/generated files.
+- Owned unsafe/guarded synthetic borrowing consumers with deposit/borrow/repay actions and per-account isolation.
+- Local sandbox deployment script (guard, mocks, both consumers), test-network allowlist and ignored secrets/generated files.
 - Project commands, readiness check and GitHub Actions check configuration.
 
 ## Verification
@@ -48,7 +49,7 @@ October 2, 2026:
 
 ## Not yet implemented/provisioned
 
-- Unsafe/guarded borrowing consumer and isolated public scenario creation.
+- Isolated public scenario creation (local sandbox still shares one mock set).
 - Wallet signing and scenario execution in the web UI.
 - Report exporter and complete end-to-end public demo.
 - Public testnet deployment, funded test wallet, hosting or remote repository.
@@ -57,6 +58,14 @@ October 2, 2026:
 
 ## Next concrete task
 
-The user declined the GitHub plugin for this request. Use the authenticated GitHub CLI for authorized repository operations; plugin installation is not a pending setup task.
+M1 remainder in `BUILD_PLAN.md`: wire the completed unsafe/guarded split action into the frontend so the comparison reflects observed contract behavior, then continue to M2 wallet execution. The user declined the GitHub plugin for this request. Use the authenticated GitHub CLI for authorized repository operations; plugin installation is not a pending setup task.
 
-M1 in `BUILD_PLAN.md`: implement the owned unsafe and guarded consumer and turn the split comparison into an actual contract action. Keep the existing guard regressions green, then wire that single complete flow into the frontend.
+## M1 split harness verification
+
+October 2, 2026:
+
+- `pnpm run check` passed: strict TypeScript, production web build, Solidity formatting, 26 contract tests (14 guard + 12 consumer), including 256-run fuzz suites for multiplier independence.
+- Split behavior is now an explicit contract action: with multiplier 2 and a $100 per-token feed, 100 tokens value at $20,000 unsafe vs $10,000 guarded; 60% caps are $12,000 vs $6,000. A 12,000 borrow succeeds on the unsafe consumer and reverts with `BorrowExceedsCap` on the guarded consumer; a 6,000 borrow succeeds on the guarded consumer.
+- Healthy multiplier-1 inputs succeed and repay cleanly in both consumers. Guarded borrowing rejects paused inputs while repayment stays callable; the unsafe consumer still permits the paused borrow, demonstrating the fault. Per-account collateral/debt isolation, 6-decimal scaling, unsupported-decimal rejection, zero-collateral and exact-cap boundaries, over-repay rejection, and invalid-configuration rejection are covered.
+- `pnpm run deploy:local` passed on Anvil chain 31337; eight successful transactions (three mock deployments, two mock initializations, guard + unsafe + guarded deployments) in ignored `contracts/broadcast/DeploySandbox.s.sol/31337/run-latest.json`. Addresses there are transient local evidence, not public testnet addresses.
+- Landing-page comparisons remain illustrative until the frontend wiring lands; no wallet, report export, public deployment, or submission state has changed.
