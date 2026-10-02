@@ -4,7 +4,7 @@ Build a complete demonstration before adding breadth. This is the execution orde
 
 ## Progress
 
-M0–M4 are implemented and verified locally: 35 contract regressions and a 41-action isolated-Anvil check cover all 15 observed suite checks. Browser signing/public runs and M5 remain release gates. See `STATUS.md` for the actual verified state.
+M0–M4 are implemented and verified locally: 41 contract regressions and a 41-action isolated-Anvil check cover all 15 observed suite checks. Browser signing/public runs and M5 remain release gates. See `STATUS.md` for the actual verified state.
 
 ## M0 — Foundation
 

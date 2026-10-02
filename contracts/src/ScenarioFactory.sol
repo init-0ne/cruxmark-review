@@ -38,7 +38,6 @@ contract ScenarioInstance {
             block.chainid == 31337 || block.chainid == 46630 || block.chainid == 421614,
             "Test networks only"
         );
-        require(block.timestamp > 3601, "Clock not initialized");
         require(runOwner != address(0), "Invalid owner");
         owner = runOwner;
         price = new MockFeed(8);

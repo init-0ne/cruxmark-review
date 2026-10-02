@@ -85,6 +85,36 @@ contract ScenarioFactoryTest {
         aliceGuarded.borrow(12_000e18);
     }
 
+    function testInstanceRejectsInvalidOwnerChainAndClock() public {
+        vm.expectRevert(bytes("Invalid owner"));
+        new ScenarioInstance(address(0));
+
+        vm.chainId(1);
+        vm.expectRevert(bytes("Test networks only"));
+        new ScenarioInstance(ALICE);
+        vm.chainId(31337);
+
+        // The grace window needs a clock past 3601 to place a recovery before it.
+        vm.warp(3601);
+        vm.expectRevert(bytes("Clock not initialized"));
+        new ScenarioInstance(ALICE);
+        vm.warp(3602);
+        ScenarioInstance edge = new ScenarioInstance(ALICE);
+        require(edge.sequencer().startedAt() == 1, "Healthy recovery precedes the grace window");
+    }
+
+    function testConfigureRejectsUnknownFaultAndMultiplier() public {
+        ScenarioInstance mine = factory.createScenario();
+        (bool accepted,) =
+            address(mine).call(abi.encodeWithSignature("configureScenario(uint8)", 6));
+        require(!accepted, "Unknown fault accepted");
+        (accepted,) = address(mine).call(abi.encodeWithSignature("configureScenario(uint8)", 5));
+        require(accepted, "Last fault rejected");
+
+        vm.expectRevert(bytes("Invalid multiplier"));
+        mine.setSplitMultiplier(0);
+    }
+
     function testFactoryTracksPerUserScenarios() public {
         vm.prank(ALICE);
         ScenarioInstance first = factory.createScenario();

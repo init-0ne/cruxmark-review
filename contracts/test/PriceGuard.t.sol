@@ -113,11 +113,68 @@ contract PriceGuardTest {
         alternate.valueUsd18(100e18);
     }
 
-    function testInvalidConfigurationRejected() public {
+    function testEveryInvalidConfigurationRejected() public {
+        address eoa = address(0xBEEF);
         vm.expectRevert(PriceGuard.InvalidConfiguration.selector);
-        new PriceGuard(address(0), address(sequencer), address(token), 300, 3600);
+        new PriceGuard(eoa, address(sequencer), address(token), 300, 3600);
+        vm.expectRevert(PriceGuard.InvalidConfiguration.selector);
+        new PriceGuard(address(price), eoa, address(token), 300, 3600);
+        vm.expectRevert(PriceGuard.InvalidConfiguration.selector);
+        new PriceGuard(address(price), address(sequencer), eoa, 300, 3600);
         vm.expectRevert(PriceGuard.InvalidConfiguration.selector);
         new PriceGuard(address(price), address(sequencer), address(token), 0, 3600);
+        vm.expectRevert(PriceGuard.InvalidConfiguration.selector);
+        new PriceGuard(address(price), address(sequencer), address(token), 300, 0);
+        // The smallest valid windows are accepted.
+        new PriceGuard(address(price), address(sequencer), address(token), 1, 1);
+    }
+
+    function testZeroAndEighteenDecimalFeedsAreSupported() public {
+        MockFeed whole = new MockFeed(0);
+        whole.setRound(100, 10_000, 10_000);
+        PriceGuard zeroScale =
+            new PriceGuard(address(whole), address(sequencer), address(token), 300, 3600);
+        require(zeroScale.valueUsd18(100e18) == 10_000e18, "Zero-decimal feed");
+
+        MockFeed wide = new MockFeed(18);
+        wide.setRound(100e18, 10_000, 10_000);
+        PriceGuard eighteenScale =
+            new PriceGuard(address(wide), address(sequencer), address(token), 300, 3600);
+        require(eighteenScale.valueUsd18(100e18) == 10_000e18, "Eighteen-decimal feed");
+    }
+
+    function testBalanceProductOverflowRevertsInsteadOfWrapping() public {
+        // Feed answer is 100e8, so this is the largest balance whose product fits.
+        uint256 limit = type(uint256).max / 100e8;
+        require(guard.valueUsd18(limit) == limit * 100e8 / 1e8, "Largest representable balance");
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x11));
+        guard.valueUsd18(limit + 1);
+    }
+
+    function testMockRejectsZeroMultiplier() public {
+        vm.expectRevert(bytes("Invalid multiplier"));
+        token.setState(false, 0);
+    }
+
+    /// @dev Opens exactly when the price is at most maxAge old AND the sequencer
+    /// has been up for strictly longer than the grace period; the sequencer
+    /// check runs first, so it names the rejection when both fail.
+    function testFuzzFreshnessAndRecoveryWindows(uint16 priceAge, uint16 sequencerUp) public {
+        uint256 age = uint256(priceAge) % 10_000;
+        uint256 up = uint256(sequencerUp) % 9_999 + 1; // never 0: that means uninitialized
+        price.setRound(100e8, 10_000 - age, 10_000 - age);
+        sequencer.setRound(0, 10_000 - up, 10_000 - up);
+        bool open = age <= 300 && up > 3600;
+        try guard.valueUsd18(100e18) returns (uint256 value) {
+            require(open, "Opened outside the windows");
+            require(value == 10_000e18, "Wrong value");
+        } catch (bytes memory reason) {
+            require(!open, "Closed inside the windows");
+            bytes4 expected = up <= 3600
+                ? PriceGuard.SequencerUnavailable.selector
+                : PriceGuard.PriceUnavailable.selector;
+            require(bytes4(reason) == expected, "Wrong rejection");
+        }
     }
 
     function testMockFaultsRequireScenarioOwner() public {
