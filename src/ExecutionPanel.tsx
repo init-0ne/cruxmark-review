@@ -119,6 +119,7 @@ export default function ExecutionPanel() {
   }
 
   function connect(local = false) {
+    if (records.length && !window.confirm('Reconnecting clears this browser session’s action history from the current report. Download its evidence JSON first. Continue without it?')) return
     void task('Connect wallet', async (current) => {
       const owner = await (local ? connectLocalAccount() : connectAccount())
       current()
@@ -175,6 +176,7 @@ export default function ExecutionPanel() {
 
   function create() {
     if (!account || pending || recoveryBlocked) return
+    if (records.length && !window.confirm('This run has confirmed actions that will leave the current report when you create a new run. Download its evidence JSON first. Continue without it?')) return
     void task('Create isolated run', async (current) => {
       await assertWalletSession(account)
       const client = await verifiedClient()
@@ -192,6 +194,8 @@ export default function ExecutionPanel() {
 
   function select(address: Address) {
     if (!account || pending) return
+    if (address === run?.instance && records.length > 0) return
+    if (records.length && !window.confirm('Switching runs clears this browser session’s action history from the current report. Download its evidence JSON first. Continue without it?')) return
     setSnapshot(undefined); setRun(undefined); setRecords([])
     void task('Load owned run', async (current) => {
       const client = await verifiedClient()
@@ -329,7 +333,7 @@ export default function ExecutionPanel() {
     if (!account) { connect(localDemo); return }
     if (!chainOk) { switchNetwork(); return }
     if (pending) { refresh(); return }
-    if (!suggested) return
+    if (!suggested) { if (records.length) download(); return }
     if (suggested === 'create') create()
     else if (suggested === 'deposit') deposit()
     else if (suggested === 'repay') repay()
@@ -343,7 +347,7 @@ export default function ExecutionPanel() {
         : suggested === 'deposit' ? 'Prepare both positions'
           : suggested === 'repay' ? 'Repay all debt'
             : suggested?.type === 'configure' ? (suggested.fault === 0 && family === 'sequencer' ? 'Simulate post-grace control' : suggested.fault === 0 ? 'Restore healthy inputs' : `Seed ${faults[suggested.fault]}`)
-              : suggested?.type === 'borrow' ? `${suggested.expectedError ? 'Test' : 'Borrow'} ${formatUsd18(suggested.amount)} ${suggested.consumer}${suggested.expectedError ? ' rejection' : ''}` : undefined
+              : suggested?.type === 'borrow' ? `${suggested.expectedError ? 'Test' : 'Borrow'} ${formatUsd18(suggested.amount)} ${suggested.consumer}${suggested.expectedError ? ' rejection' : ''}` : records.length ? 'Download evidence JSON' : undefined
 
   return <section id="execute" className="exec-section wrap" aria-labelledby="execute-title">
     <div className="section-heading"><div><p className="eyebrow">EXECUTION LAB</p><h2 id="execute-title">Reproduce. Protect.<br /><span>Keep the evidence.</span></h2></div><p>One supported stock-collateral sandbox.<br />Owned mocks. Synthetic balances. Observed results.</p></div>
@@ -351,13 +355,13 @@ export default function ExecutionPanel() {
       <div className="exec-toolbar"><span className="mono">{chain.name} / {chain.id}</span><span className="example-pill">Controlled testnet sandbox</span></div>
       {!factoryAddress ? <div className="exec-results"><p className="exec-empty">{factoryConfigError || 'Execution deployment is not configured. The local setup guide below explains how to start the sandbox.'}</p><a className="text-link" href="#documentation">Open setup guide ↓</a></div> : <>
         <div className="exec-focus">
-          <div className="exec-focus-copy"><p className="mono exec-label">ACTIVE RUN · {visibleChecks.filter((item) => item.status === 'verified').length}/{visibleChecks.length} CHECKS VERIFIED</p><p className="exec-next" id="lab-next"><span className="mono">NEXT</span> {guidance}</p></div>
+          <div className="exec-focus-copy"><p className="mono exec-label">{family === 'split' ? 'STOCK SPLIT' : family === 'price' ? 'UNAVAILABLE PRICE' : 'SEQUENCER RECOVERY'} · {visibleChecks.filter((item) => item.status === 'verified').length}/{visibleChecks.length} CHECKS VERIFIED</p><p className="exec-next" id="lab-next"><span className="mono">NEXT</span> {guidance}</p></div>
           {suggestedLabel && <button className="button button-primary exec-focus-button" onClick={runSuggested} disabled={!!busy || recoveryBlocked}>{suggestedLabel} <span aria-hidden="true">→</span></button>}
         </div>
         <div className="exec-grid">
           <div className="exec-step"><p className="mono exec-label">01 / CONNECT</p><h3>Your test wallet</h3><p>{chain.name}. Test ETH pays gas; collateral and debt are synthetic.</p><div className="exec-row"><button className="button button-primary" onClick={() => connect()} disabled={!!busy || !!pending}>{account ? 'Reconnect wallet' : 'Connect wallet'}</button>{localDemo && <button className="button button-small button-outline" onClick={() => connect(true)} disabled={!!busy || !!pending}>Use local test account</button>}{account && <span className="mono exec-account">{truncateAddress(account)}</span>}</div>{localDemo && <p className="exec-hint">The local option uses a disposable unlocked test account. No wallet installation or key import is needed.</p>}{account && !chainOk && <button className="button button-small button-outline" disabled={!!busy || !!pending} onClick={switchNetwork}>Switch to {chain.name}</button>}{chainOk && <p className="exec-hint">Wallet on selected test chain</p>}{chain.id !== 31337 && <a className="text-link" href={chain.id === 46630 ? 'https://faucet.testnet.chain.robinhood.com' : 'https://arbitrum.faucet.dev/'} target="_blank" rel="noreferrer">Get free test ETH ↗</a>}</div>
           <div className="exec-step"><p className="mono exec-label">02 / SELECT</p><h3>Choose the fault family</h3><div className="exec-row"><select aria-label="Scenario family" value={family} disabled={!!busy || !!pending} onChange={(event) => setFamily(event.target.value as typeof family)}><option value="split">Stock split</option><option value="price">Unavailable price</option><option value="sequencer">Sequencer recovery</option></select></div><p>{family === 'split' ? 'An adjusted $100 price must stay $100 after a 2× split.' : family === 'price' ? 'Positive paused and stale prices must reject borrowing.' : 'Down and recovering inputs must reject borrowing until grace expires.'}</p></div>
-          <div className="exec-step"><p className="mono exec-label">03 / ISOLATE</p><h3>Create a fresh run</h3><p>Your wallet alone controls this run’s faults.</p><div className="exec-row"><button className="button button-outline" onClick={create} disabled={!account || !chainOk || !!busy || !!pending || recoveryBlocked}>Create isolated run</button>{instances.length > 0 && <select aria-label="Owned scenario instance" value={run?.instance ?? ''} disabled={!!busy || !!pending} onChange={(event) => select(event.target.value as Address)}><option value="" disabled>Recent owned runs ({instances.length})</option>{instances.map((value) => <option value={value} key={value}>{truncateAddress(value)}</option>)}</select>}</div>{run && <p className="exec-address mono">Instance {explorerAddressUrl(run.instance) ? <a href={explorerAddressUrl(run.instance)} target="_blank" rel="noreferrer">{truncateAddress(run.instance)} ↗</a> : run.instance}</p>}</div>
+          <div className="exec-step"><p className="mono exec-label">03 / ISOLATE</p><h3>Create a fresh run</h3><p>Your wallet alone controls this run’s faults.</p><div className="exec-row"><button className="button button-outline" onClick={create} disabled={!account || !chainOk || !!busy || !!pending || recoveryBlocked}>Create isolated run</button>{instances.length > 0 && <select aria-label="Owned scenario instance" value={run?.instance ?? ''} disabled={!!busy || !!pending} onChange={(event) => select(event.target.value as Address)}><option value="" disabled>Recent owned runs ({instances.length})</option>{instances.map((value) => <option value={value} key={value}>{truncateAddress(value)}</option>)}</select>}</div>{run && <p className="exec-address mono">Instance {explorerAddressUrl(run.instance) ? <a href={explorerAddressUrl(run.instance)} target="_blank" rel="noreferrer">{truncateAddress(run.instance)} ↗</a> : run.instance}</p>}{records.length > 0 && <p className="exec-hint">Download this run’s evidence before switching or creating another run. Action history is kept only in this browser session.</p>}</div>
         </div>
         <div className="exec-grid">
           <div className="exec-step"><p className="mono exec-label">04 / PREPARE</p><h3>100 tokens. Two consumers.</h3><p>Deposit identical synthetic collateral into the seeded unsafe and guarded versions.</p><div className="exec-row"><button className="button button-outline" onClick={deposit} disabled={disabled}>Prepare 100 tokens each</button><button className="button button-small button-outline" onClick={refresh} disabled={!run || !!busy || !!pending}>Refresh reads</button></div>{family !== 'split' && <p className="exec-hint">For repayment evidence: seed healthy inputs, borrow $1k guarded, then seed a fault and repay while pricing is blocked.</p>}</div>

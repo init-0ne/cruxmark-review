@@ -78,13 +78,19 @@ try {
   assert.match(await page.text('.exec-values'), /\$20,000[\s\S]*\$10,000/)
   assert.match(await page.text('.exec-values'), /\(\d+s ago; max age 300s\)[\s\S]*\(\d+s ago; grace 3600s\)/, 'the ages the guard compares are shown')
   await page.eval(`window.__download = null; const make = URL.createObjectURL.bind(URL); URL.createObjectURL = (blob) => { window.__download = blob; return make(blob) }`)
-  await page.click('Download evidence JSON')
+  await page.click('Download evidence JSON', '.exec-focus')
   await page.waitFor('window.__download', 5000, 'evidence download')
   const report = JSON.parse(await page.eval('window.__download.text()'))
   assert(validateEvidenceReport(report), 'the file the browser produced must be a consistent report')
   assert.equal(report.actions.length, 6)
   const findings = await verifyReportOnChain(client, report, { state: true })
   assert.deepEqual(findings.filter((item) => item.status !== 'pass'), [], JSON.stringify(findings))
+  const currentRun = await page.text('.exec-address')
+  page.acceptDialogs = false
+  await page.click('Create isolated run')
+  assert.equal(await page.text('.exec-address'), currentRun, 'declining a run switch preserves its evidence')
+  assert.match(await page.text('.exec-checks .exec-label'), /4\/4/)
+  page.acceptDialogs = true
   stepLog('the guided control completes 4/4 split checks; its browser-produced report verifies on-chain including state')
 
   console.log('Scenario 2: a refused action is explained, not dumped')
