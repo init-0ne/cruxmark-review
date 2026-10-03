@@ -200,8 +200,83 @@ try {
     stepLog(`${clicks} guided clicks recorded ${full.actions.length} confirmed actions and all 15 checks; the complete report verifies on-chain`)
   }
 
+  console.log('Browser wallet: a provider rejects a signature, then signs a real run')
+  await page.installScript(`(() => {
+    let rejectNextWrite = true
+    window.ethereum = {
+      request: async ({ method, params = [] }) => {
+        if (method === 'eth_requestAccounts') method = 'eth_accounts'
+        if (method === 'eth_sendTransaction' && rejectNextWrite) {
+          rejectNextWrite = false
+          throw Object.assign(new Error('User rejected the request.'), { code: 4001 })
+        }
+        const response = await fetch(${JSON.stringify(rpcUrl)}, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+        })
+        const payload = await response.json()
+        if (payload.error) throw Object.assign(new Error(payload.error.message), { code: payload.error.code })
+        return payload.result
+      },
+      on: () => {},
+      removeListener: () => {},
+    }
+  })()`)
+  await open(local.url)
+  await page.click('Connect wallet')
+  await notice('verified', 20000)
+  await page.click('Create isolated run')
+  await notice('rejected the request', 20000)
+  assert.equal(await pendingKey(), undefined, 'a declined wallet prompt must not persist a pending transaction')
+  assert.equal(await page.eval(`!!document.querySelector('.exec-address')`), false, 'a declined creation must not invent a run')
+  await page.click('Create isolated run')
+  await notice('Fresh isolated run', 20000)
+  await page.click('Prepare 100 tokens each')
+  await notice('Both positions', 30000)
+  await page.click('Seed Stock split', '.exec-focus')
+  await notice('Action confirmed', 20000)
+  assert.match(await page.text('.exec-values'), /\$20,000[\s\S]*\$10,000/)
+  stepLog('the extension-style provider signs a real run after a rejected signature leaves no pending evidence')
+
+  console.log('Browser wallet: a provider on the wrong chain adds and switches to the selected testnet')
+  await page.installScript(`(() => {
+    let chainId = '0x66eee'
+    let added = false
+    window.__walletCalls = []
+    window.ethereum = {
+      request: async ({ method, params = [] }) => {
+        window.__walletCalls.push(method)
+        if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [${JSON.stringify(deployer)}]
+        if (method === 'eth_chainId') return chainId
+        if (method === 'wallet_addEthereumChain') {
+          if (params[0]?.chainId !== '0xb626' || params[0]?.rpcUrls?.[0] !== 'https://rpc.testnet.chain.robinhood.com') throw new Error('Unexpected chain metadata.')
+          added = true
+          return null
+        }
+        if (method === 'wallet_switchEthereumChain') {
+          if (!added) throw Object.assign(new Error('Unknown chain.'), { code: 4902 })
+          chainId = params[0].chainId
+          return null
+        }
+        throw new Error('Unexpected wallet request: ' + method)
+      },
+      on: () => {},
+      removeListener: () => {},
+    }
+  })()`)
+  await open(publicSite.url)
+  await page.click('Connect wallet')
+  await notice('Switch to Robinhood Chain Testnet', 20000)
+  await page.click('Switch to Robinhood Chain Testnet')
+  await notice('Wallet is on Robinhood Chain Testnet', 20000)
+  assert.deepEqual(await page.eval('window.__walletCalls.filter((method) => method.startsWith("wallet_"))'), [
+    'wallet_switchEthereumChain', 'wallet_addEthereumChain', 'wallet_switchEthereumChain',
+  ])
+  stepLog('wrong-network guidance uses the wallet’s add-chain and switch-chain requests')
+
   assert.deepEqual(page.logs, [], 'the page must not log errors or exceptions')
-  console.log('UI checks passed: split flow with browser-produced evidence verified on-chain, failure wording, transaction recovery and discard, public-build boundary, clean console.')
+  console.log('UI checks passed: guided evidence verified on-chain, wallet signing/rejection/network switch, transaction recovery, public-build boundary, clean console.')
 } catch (error) {
   if (page) console.error('Page notice at failure:', await page.text('.exec-notice').catch(() => '(unavailable)'), '| console:', page.logs)
   throw error

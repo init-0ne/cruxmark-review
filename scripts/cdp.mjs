@@ -69,6 +69,7 @@ export async function launchBrowser({ width = 1440, height = 900 } = {}) {
   const page = {
     logs, dialogs,
     set acceptDialogs(value) { acceptDialogs = value },
+    async installScript(source) { await send('Page.addScriptToEvaluateOnNewDocument', { source }) },
     async eval(expression) {
       const result = await send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
       if (result.exceptionDetails) throw new Error(result.exceptionDetails.exception?.description ?? result.exceptionDetails.text)
