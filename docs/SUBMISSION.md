@@ -2,6 +2,8 @@
 
 This is a working preparation checklist. The user confirmed registration on October 3; Cruxmark has not been submitted. Use `HACKATHON.md` for official facts and outstanding rule checks.
 
+The [submission copy](SUBMISSION_COPY.md) contains the verified project description, demo URL, network, factory address, code history and scope language ready for the signed-in form. Its public-run and source-access lines remain explicitly pending.
+
 ## Account and eligibility
 
 - [x] Confirm HackQuest registration before its registration cutoff (user confirmed October 3).

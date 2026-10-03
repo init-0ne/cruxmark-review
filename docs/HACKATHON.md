@@ -14,7 +14,7 @@ Online period: September 14–October 4, 2026. The public schedule checked Octob
 
 Awards: Overall 40k/20k/10k USDC; Promising Products 7k/5k/3k USDC; discretionary grants up to 30k USDC. Grants can be unawarded; Overall awards are milestone-linked. Each three-winner category reserves at least one Robinhood Chain and one Arbitrum winner.
 
-An Arbitrum-chain deployment is required; Sepolia qualifies. Existing projects are allowed. Judging considers contract quality, market fit, innovation and real needs. USDG earns extra consideration.
+An Arbitrum-chain deployment is required; the official page explicitly names Robinhood Chain and Arbitrum Sepolia as qualifying examples. Existing projects are allowed. Judging considers contract quality, market fit, innovation and real needs. USDG earns extra consideration.
 
 Submission fields request frontend/demo URL, labeled protocol/network addresses, factory/pool and token addresses or N/A, event-period code description, sponsor selections, and an Arbitrum One payout wallet. Private repositories can invite [engineering-AF](https://github.com/engineering-AF).
 
