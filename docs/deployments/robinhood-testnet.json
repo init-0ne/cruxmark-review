@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "cruxmark-deployment/1",
+  "chain": {
+    "id": 46630,
+    "name": "Robinhood Chain Testnet"
+  },
+  "source": {
+    "revision": "111f19a0e8b3afb870531823239734f798424602",
+    "dirty": false,
+    "compiler": "0.8.30+commit.73712a01",
+    "evmVersion": "paris",
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    }
+  },
+  "factory": {
+    "address": "0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb",
+    "runtimeCodeHash": "0xe7512cae6bbb62e90996d1ebcf4497c2e41d4a8749d817403d3b24cfe8c17bb5",
+    "runtimeBytes": 13642,
+    "purpose": "Creates wallet-owned isolated mock scenarios",
+    "ownership": "Factory has no privileged owner; each instance is owned by its creating wallet."
+  },
+  "deployment": {
+    "hash": "0x6ffe2bc9adbfac5dc582b41d69b9b37edf25285f80c06bc43f9e72651f488afc",
+    "deployer": "0xc514674b25b721a471c9a0879105539043d08867",
+    "status": "success",
+    "blockNumber": "128210605",
+    "blockHash": "0xdf0f86efb340b015712550b382796977ee948fb6b3c538297c3a7f06009a4e5d",
+    "timestamp": "1791039319"
+  },
+  "explorer": "https://explorer.testnet.chain.robinhood.com",
+  "scope": "Controlled synthetic stock-collateral sandbox. No real feed/token compatibility or explorer source verification is asserted by this manifest."
+}
