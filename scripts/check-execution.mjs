@@ -8,7 +8,7 @@ import { createPublicClient, createWalletClient, custom, encodeFunctionData, htt
 import { foundry } from 'viem/chains'
 import { executionAbi, factoryAbi, BORROW_CORRECT, BORROW_INCORRECT, BORROW_PROBE, DEPOSIT_AMOUNT } from '../src/contracts.ts'
 import { actionOutcome, confirmAction, encodeSubmission, guardMessages, restoreSubmission, loadOwnedRuns, loadRun, readSnapshot, submitAction, SupersededTransactionError, verifyFactory } from '../src/execution.ts'
-import { buildEvidenceReport, nextLabStep, observedFault, serialize, validateEvidenceReport } from '../src/evidence.ts'
+import { buildEvidenceReport, nextLabInstruction, nextLabStep, observedFault, serialize, validateEvidenceReport } from '../src/evidence.ts'
 import { verifyReportOnChain } from '../src/verification.ts'
 import { assertWalletSession, connectLocalAccount, classifyError, getProvider, readWalletSession, switchToSelectedChain } from '../src/wallet.ts'
 
@@ -49,6 +49,9 @@ assert.equal(nextLabStep('price', labSnapshot('paused'), []), 'Restore healthy i
 assert.equal(nextLabStep('sequencer', labSnapshot('down'), []), 'Simulate post-grace control, then borrow $1k healthy control.')
 assert.equal(nextLabStep('price', labSnapshot('healthy'), []), 'Borrow $1k healthy control.')
 assert.equal(nextLabStep('price', labSnapshot('healthy', 6_000n * 10n ** 18n), []), 'Repay all debt, then borrow $1k healthy control.')
+assert.deepEqual(nextLabInstruction('split', labSnapshot('healthy'), []).command, { type: 'configure', fault: 1 })
+assert.deepEqual(nextLabInstruction('split', labSnapshot('split'), []).command, { type: 'borrow', consumer: 'unsafe', amount: BORROW_INCORRECT })
+assert.deepEqual(nextLabInstruction('price', labSnapshot('paused'), []).command, { type: 'configure', fault: 0 })
 function coverageRecord(action, before, after, status = 'success', replayError) {
   return { action, before, after, receipt: { status }, ...(replayError ? { replayError } : {}) }
 }

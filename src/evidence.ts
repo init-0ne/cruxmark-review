@@ -1,6 +1,6 @@
 import { encodeFunctionData, type Hash } from 'viem'
 import { executionAbi, ONE_E18 } from './contracts.ts'
-import { actionOutcome, type ConfirmedAction, type RunContracts, type Snapshot } from './execution.ts'
+import { actionOutcome, type Action, type ConfirmedAction, type RunContracts, type Snapshot } from './execution.ts'
 
 export const EVIDENCE_SCHEMA = 'cruxmark-evidence/2' as const
 type Serialized<T> = T extends bigint ? string : T extends (infer U)[] ? Serialized<U>[] : T extends object ? { [K in keyof T]: Serialized<T[K]> } : T
@@ -38,51 +38,61 @@ export function observedFault(snapshot: Snapshot): 'healthy' | 'split' | 'paused
 
 const prepared = 100n * ONE_E18
 const probe = 1_000n * ONE_E18
+type LabCommand = 'create' | 'deposit' | 'repay' | Action
+export interface LabInstruction { text: string; command?: LabCommand }
+const instruction = (text: string, command?: LabCommand): LabInstruction => ({ text, command })
+const seed = (fault: 0 | 1 | 2 | 3 | 4 | 5): Action => ({ type: 'configure', fault })
+const borrow = (consumer: 'unsafe' | 'guarded', amount: bigint, expectedError?: 'BorrowExceedsCap' | 'PriceUnavailable' | 'SequencerUnavailable'): Action => ({ type: 'borrow', consumer, amount, ...(expectedError ? { expectedError } : {}) })
 
 function canBorrow(position: Snapshot['unsafe'], amount: bigint) {
   return position.cap !== undefined && position.debt + amount <= position.cap
 }
 
-export function nextLabStep(family: 'split' | 'price' | 'sequencer', snapshot: Snapshot | undefined, records: ConfirmedAction[]): string {
-  if (!snapshot) return 'Create an isolated run, then prepare 100 tokens in each consumer.'
+export function nextLabInstruction(family: 'split' | 'price' | 'sequencer', snapshot: Snapshot | undefined, records: ConfirmedAction[]): LabInstruction {
+  if (!snapshot) return instruction('Create an isolated run, then prepare 100 tokens in each consumer.', 'create')
   const { unsafe, guarded } = snapshot
-  if (unsafe.collateral < prepared || guarded.collateral < prepared) return 'Prepare 100 tokens in each consumer.'
-  if (unsafe.collateral !== prepared || guarded.collateral !== prepared) return 'This run holds more than 100 tokens in a consumer. Create a fresh isolated run so the example caps stay exact.'
+  if (unsafe.collateral < prepared || guarded.collateral < prepared) return instruction('Prepare 100 tokens in each consumer.', 'deposit')
+  if (unsafe.collateral !== prepared || guarded.collateral !== prepared) return instruction('This run holds more than 100 tokens in a consumer. Create a fresh isolated run so the example caps stay exact.', 'create')
   const done = new Set(evaluateChecks(records).filter((item) => item.status === 'verified').map((item) => item.id))
   const fault = observedFault(snapshot)
   if (family === 'split') {
-    if (fault !== 'split') return 'Seed Stock split.'
-    if (!done.has('split: unsafe $12k borrow confirmed')) return unsafe.debt > 0n ? 'Repay all debt, then borrow $12k unsafe.' : 'Borrow $12k unsafe.'
-    if (!done.has('split: guarded $12k borrow rejected')) return 'Test $12k guarded rejection.'
-    if (!done.has('split: guarded $6k control confirmed')) return guarded.debt > 0n ? 'Repay all debt, then borrow $6k guarded control.' : 'Borrow $6k guarded control.'
-    return 'Stock split checks are recorded. Switch family or download the evidence JSON.'
+    if (['split: unsafe $12k borrow confirmed', 'split: guarded $12k borrow rejected', 'split: guarded $6k control confirmed'].every((id) => done.has(id))) return instruction('Stock split checks are recorded. Switch family or download the evidence JSON.')
+    if (fault !== 'split') return instruction('Seed Stock split.', seed(1))
+    if (!done.has('split: unsafe $12k borrow confirmed')) return unsafe.debt > 0n ? instruction('Repay all debt, then borrow $12k unsafe.', 'repay') : instruction('Borrow $12k unsafe.', borrow('unsafe', 12_000n * ONE_E18))
+    if (!done.has('split: guarded $12k borrow rejected')) return instruction('Test $12k guarded rejection.', borrow('guarded', 12_000n * ONE_E18, 'BorrowExceedsCap'))
+    if (!done.has('split: guarded $6k control confirmed')) return guarded.debt > 0n ? instruction('Repay all debt, then borrow $6k guarded control.', 'repay') : instruction('Borrow $6k guarded control.', borrow('guarded', 6_000n * ONE_E18))
+    return instruction('Stock split checks are recorded. Switch family or download the evidence JSON.')
   }
   const healthy = family === 'sequencer' ? 'Simulate post-grace control' : 'Restore healthy inputs'
   const blocked = family === 'price'
     ? { names: ['paused', 'stale'] as const, seeds: ['Paused price', 'Stale price'], repay: 'unavailable-price: guarded debt repaid while blocked', again: 'Paused price or Stale price', done: 'Unavailable-price checks are recorded. Switch family or download the evidence JSON.' }
     : { names: ['down', 'grace'] as const, seeds: ['Sequencer down', 'Recovery grace'], repay: 'sequencer: guarded debt repaid while blocked', again: 'Sequencer down or Recovery grace', done: 'Sequencer checks are recorded. Switch family or download the evidence JSON.' }
   if (!done.has('healthy: guarded $1k control confirmed')) {
-    if (fault !== 'healthy') return `${healthy}, then borrow $1k healthy control.`
-    return canBorrow(guarded, probe) ? 'Borrow $1k healthy control.' : 'Repay all debt, then borrow $1k healthy control.'
+    if (fault !== 'healthy') return instruction(`${healthy}, then borrow $1k healthy control.`, seed(0))
+    return canBorrow(guarded, probe) ? instruction('Borrow $1k healthy control.', borrow('guarded', probe)) : instruction('Repay all debt, then borrow $1k healthy control.', 'repay')
   }
   for (let index = 0; index < blocked.names.length; index++) {
     const name = blocked.names[index]
     if (done.has(`${name}: unsafe $1k borrow confirmed`) && done.has(`${name}: guarded $1k borrow rejected`)) continue
-    if (fault !== name) return `Seed ${blocked.seeds[index]}.`
+    if (fault !== name) return instruction(`Seed ${blocked.seeds[index]}.`, seed(family === 'price' ? (index === 0 ? 2 : 3) : (index === 0 ? 4 : 5)))
     if (!done.has(`${name}: unsafe $1k borrow confirmed`)) {
-      if (canBorrow(unsafe, probe)) return 'Borrow $1k unsafe.'
-      return unsafe.debt > 0n ? 'Repay all debt, then borrow $1k unsafe.' : `Seed ${blocked.seeds[index]}, then borrow $1k unsafe.`
+      if (canBorrow(unsafe, probe)) return instruction('Borrow $1k unsafe.', borrow('unsafe', probe))
+      return unsafe.debt > 0n ? instruction('Repay all debt, then borrow $1k unsafe.', 'repay') : instruction(`Seed ${blocked.seeds[index]}, then borrow $1k unsafe.`, seed(family === 'price' ? (index === 0 ? 2 : 3) : (index === 0 ? 4 : 5)))
     }
-    return 'Test $1k guarded rejection.'
+    return instruction('Test $1k guarded rejection.', borrow('guarded', probe, family === 'price' ? 'PriceUnavailable' : 'SequencerUnavailable'))
   }
   if (!done.has(blocked.repay)) {
     // Each state names its own next step, so the line changes as the person obeys it instead of repeating one long sentence.
-    if ((blocked.names as readonly string[]).includes(fault) && guarded.debt > 0n) return 'Repay all debt while guarded pricing stays blocked.'
-    if (fault === 'healthy' && guarded.debt > 0n) return `Seed ${blocked.again}, then repay all debt while pricing is blocked.`
-    if (fault === 'healthy') return `Borrow $1k healthy control, then seed ${blocked.again} and repay all debt while pricing is blocked.`
-    return `${healthy}, borrow $1k healthy control, seed ${blocked.again}, then repay all debt while pricing is blocked.`
+    if ((blocked.names as readonly string[]).includes(fault) && guarded.debt > 0n) return instruction('Repay all debt while guarded pricing stays blocked.', 'repay')
+    if (fault === 'healthy' && guarded.debt > 0n) return instruction(`Seed ${blocked.again}, then repay all debt while pricing is blocked.`, seed(family === 'price' ? 2 : 4))
+    if (fault === 'healthy') return instruction(`Borrow $1k healthy control, then seed ${blocked.again} and repay all debt while pricing is blocked.`, borrow('guarded', probe))
+    return instruction(`${healthy}, borrow $1k healthy control, seed ${blocked.again}, then repay all debt while pricing is blocked.`, seed(0))
   }
-  return blocked.done
+  return instruction(blocked.done)
+}
+
+export function nextLabStep(family: 'split' | 'price' | 'sequencer', snapshot: Snapshot | undefined, records: ConfirmedAction[]): string {
+  return nextLabInstruction(family, snapshot, records).text
 }
 
 export function evaluateChecks(records: ConfirmedAction[]): EvidenceCheck[] {

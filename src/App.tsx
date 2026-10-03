@@ -111,7 +111,7 @@ export default function App() {
     <a className="skip-link" href="#main">Skip to content</a>
     <header className="site-header wrap">
       <a className="brand" href="#" aria-label="Cruxmark home"><Mark />cruxmark<span className="brand-period">.</span></a>
-      <nav aria-label="Main navigation"><a href="#lab">The lab</a><a href="#method">How it works</a><a href="#documentation">Documentation</a></nav>
+      <nav aria-label="Main navigation"><a href="#execute">Run the lab</a><a href="#lab">Scenarios</a><a href="#method">How it works</a></nav>
       <a className="button button-small button-outline header-cta" href="#execute">Run the lab <Arrow diagonal /></a>
     </header>
     <main id="main">
@@ -121,14 +121,16 @@ export default function App() {
           <h1 id="hero-title">Stress-test<br /><span className="hero-muted">tokenized</span><br /><span className="hero-accent">finance.</span></h1>
           <p className="hero-description">Markets move. Splits happen. Oracles pause.<br className="desktop-break" /> Know how your integration behaves under pressure.</p>
           <div className="hero-actions"><a className="button button-primary" href="#execute">Run a stress test <Arrow /></a><a className="text-link" href="#method"><span className="play-icon" aria-hidden="true">▷</span> See the approach</a></div>
-          <p className="hero-footnote"><span className="signal-dot" />Controlled faults. Clear boundaries. No real funds.</p>
+          <p className="hero-footnote"><span className="signal-dot" />Controlled faults. Synthetic collateral. Test gas only.</p>
         </div>
         <StressChamber />
       </section>
       <div className="scope-strip wrap"><p>Built for the moments<br /><strong>happy-path tests miss.</strong></p><div><ScenarioIcon type="split" /><span>Corporate actions</span></div><div><ScenarioIcon type="price" /><span>Oracle availability</span></div><div><ScenarioIcon type="sequencer" /><span>Sequencer recovery</span></div></div>
 
+      <Suspense fallback={<section id="execute" className="exec-section wrap"><p role="status">Loading the execution lab…</p></section>}><ExecutionPanel /></Suspense>
+
       <section id="lab" className="lab-section wrap" aria-labelledby="lab-title">
-        <div className="section-heading"><div><p className="eyebrow">INSIDE THE LAB</p><h2 id="lab-title">Good assumptions.<br /><span>Meet bad conditions.</span></h2></div><p>Explore three failure families. See the faulty logic,<br className="desktop-break" /> then examine the guard that changes the outcome.</p></div>
+        <div className="section-heading"><div><p className="eyebrow">SCENARIO MODELS</p><h2 id="lab-title">Good assumptions.<br /><span>Meet bad conditions.</span></h2></div><p>Preview the three failure families and the checks<br className="desktop-break" /> that the execution lab runs against controlled inputs.</p></div>
         <div className="lab-window">
           <div className="window-bar"><span><span className="window-symbol" aria-hidden="true">⌘</span> Cruxmark stock-collateral sandbox</span><span className="preview-label"><i /> INTERACTIVE PREVIEW</span></div>
           <div className="lab-body">
@@ -146,8 +148,6 @@ export default function App() {
         </div>
       </section>
 
-      <Suspense fallback={<section id="execute" className="exec-section wrap"><p role="status">Loading the execution lab…</p></section>}><ExecutionPanel /></Suspense>
-
       <section id="method" className="method-section wrap" aria-labelledby="method-title">
         <div className="section-heading"><div><p className="eyebrow">THE CRUXMARK APPROACH</p><h2 id="method-title">From “should work”<br /><span>to show your work.</span></h2></div><p>A repeatable path from an integration assumption<br className="desktop-break" /> to evidence an engineer can inspect.</p></div>
         <div className="method-steps">
@@ -159,8 +159,8 @@ export default function App() {
       </section>
 
       <section id="documentation" className="foundation-section wrap" aria-labelledby="foundation-title">
-        <div className="foundation-copy"><p className="eyebrow">OPEN THE BLACK BOX</p><h2 id="foundation-title">Precision starts<br /><span>with transparency.</span></h2><p>Cruxmark is an early-stage compatibility lab for stock-token integrations. The local foundation includes a price guard, owned mock inputs, and executable contract regressions.</p><a className="text-link" href="https://docs.robinhood.com/chain/building-with-stock-tokens/" target="_blank" rel="noreferrer">Read the stock-token semantics <Arrow diagonal /></a><details className="local-guide"><summary>Run the local foundation <span aria-hidden="true">+</span></summary><div><p>Use Node 24 and pnpm 11.24.0 from the project directory.</p><pre><code>pnpm install --frozen-lockfile{'\n'}pnpm run doctor{'\n'}pnpm run check</code></pre><p>Start the local chain and web app in separate terminals:</p><pre><code>pnpm run chain{'\n'}pnpm run dev</code></pre><p>Use the README for deployment instructions. All sandbox assets are test assets.</p></div></details></div>
-        <div className="network-panel"><div className="network-panel-head"><span className="mono">NETWORK READINESS</span><span className="network-icon" aria-hidden="true">◎</span></div><span className="label">Selected network</span><h3>{chain.name}</h3><p className="network-id mono">CHAIN {chain.id} <span>/</span> TEST ASSETS ONLY</p><div className="network-boundary"><span>Price guard + mock inputs</span><span>Local foundation</span></div><div className="network-boundary"><span>Unsafe/guarded execution</span><span>Execution lab</span></div><div className="network-boundary"><span>Evidence export</span><span>JSON download</span></div><button className="button button-outline network-button" onClick={checkNetwork} disabled={checking}>{checking ? 'Checking connection…' : 'Check connection'}<Arrow /></button><p className={`network-status ${connected ? 'connected' : ''}`} role="status"><i />{status}</p></div>
+        <div className="foundation-copy"><p className="eyebrow">OPEN THE BLACK BOX</p><h2 id="foundation-title">Precision starts<br /><span>with transparency.</span></h2><p>Each run has its own mock inputs and two synthetic borrowing paths. One deliberately mishandles the input; the guarded path checks units, freshness, pause state and sequencer recovery. The report ties observed results to contract reads and transaction receipts.</p><a className="text-link" href="https://docs.robinhood.com/chain/building-with-stock-tokens/" target="_blank" rel="noreferrer">Read the stock-token semantics <Arrow diagonal /></a>{chain.id === 31337 && <details className="local-guide"><summary>Run locally <span aria-hidden="true">+</span></summary><div><p>Use Node 24 and pnpm 11.24.0 from the project directory.</p><pre><code>pnpm install --frozen-lockfile{'\n'}pnpm run doctor{'\n'}pnpm run check</code></pre><p>Start the local chain, deploy the sandbox, then start the app:</p><pre><code>pnpm run chain{'\n'}pnpm run deploy:local{'\n'}pnpm run dev</code></pre><p>See the README for separate-terminal instructions.</p></div></details>}</div>
+        <div className="network-panel"><div className="network-panel-head"><span className="mono">NETWORK READINESS</span><span className="network-icon" aria-hidden="true">◎</span></div><span className="label">Selected network</span><h3>{chain.name}</h3><p className="network-id mono">CHAIN {chain.id} <span>/</span> TEST ASSETS ONLY</p><div className="network-boundary"><span>Inputs</span><span>Controlled mocks</span></div><div className="network-boundary"><span>Scenario state</span><span>Isolated per wallet</span></div><div className="network-boundary"><span>Evidence</span><span>Receipts + block reads</span></div><button className="button button-outline network-button" onClick={checkNetwork} disabled={checking}>{checking ? 'Checking connection…' : 'Check connection'}<Arrow /></button><p className={`network-status ${connected ? 'connected' : ''}`} role="status"><i />{status}</p></div>
       </section>
       <section className="closing wrap" aria-labelledby="closing-title"><div><p className="eyebrow">QUESTION THE ASSUMPTION.</p><h2 id="closing-title">Find the fault.<br /><span>Before the funds.</span></h2></div><div><a className="button button-primary" href="#execute">Run the lab <Arrow diagonal /></a><p>One supported sandbox. Three defined fault families.<br />A sharper way to test tokenized finance.</p></div></section>
     </main>
