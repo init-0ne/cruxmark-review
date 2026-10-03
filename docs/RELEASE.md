@@ -16,7 +16,7 @@ The supported release is a static wallet lab and a factory for owned synthetic s
 
 ## Public testnet release
 
-- Obtain the user's dedicated test-wallet public address, signing access and free faucet ETH. Do not collect or print a private key/password. Keep keystore import/signing prompts private and interactive.
+- Obtain the user's dedicated test-wallet public address, signing access and free faucet ETH. Do not collect or print a private key/password. Prefer Foundry's browser-wallet signer so the key remains in the user's wallet.
 - Check registration, participant/team eligibility and the signed-in HackQuest form. A legal acceptance or prize-wallet decision belongs to the user; do not guess it.
 - Choose Robinhood Chain Testnet (46630) or Arbitrum Sepolia (421614). Prefer Robinhood. Measured October 2, 2026 with snapshot-shaped load (16 reads per round, ~50 requests per second): the Robinhood public RPC served all 480 requests without a failure, while the Arbitrum Sepolia public RPC answered HTTP 429 for 8 of 30 rounds. A controlled ABBA experiment with a quiet minute before each phase throttled 12/20 and 16/20 rounds sent as separate requests and 16/20 and 13/20 sent as one JSON-RPC batch, so that limiter counts calls and batching does not help. On Arbitrum Sepolia expect occasional "rate-limiting" notices (wait a few seconds and retry), or set `VITE_RPC_URL` to a different free endpoint after checking it. If this ever matters on the primary chain, the lever is fewer calls per snapshot: an on-chain view that returns the whole snapshot would cut about 17 reads to 1-2. It was not built because the primary chain showed no throttling. Official public RPCs are in `src/chains.ts`. Read the actual RPC chain ID before broadcasting; no mainnet fallback exists.
 - Commit/review the release, then run the full checks from the clean source revision. The factory and instance constructors reject unsupported chains.
@@ -30,13 +30,13 @@ A dry run only simulates; nothing is signed or sent, so any public address works
 
 Forge prints `EIP-3855 is not supported ... 46630 ... might not work properly` for the Robinhood testnet. That warning is expected and does not apply to this build: `contracts/foundry.toml` compiles for `evm_version = "paris"`, which never emits PUSH0. `pnpm run execution:test` proves it by running every action on an Anvil pinned to `--hardfork paris`, where PUSH0 is rejected (`NotActivated`); compiling for Shanghai makes that check fail. Do not raise the EVM target without re-verifying the chain.
 
-After the user can sign and the dry-run/faucet balance are verified, import the dedicated test wallet into an encrypted Foundry keystore in the user's own terminal with `pnpm exec cast wallet import cruxmark-testnet --interactive`. Use its hidden prompts; never pass a key or keystore password in a command, environment variable, chat or tool output. Broadcast with the wallet's public address as the sender:
+After the user can sign and the dry-run/faucet balance are verified, broadcast through Foundry's local browser-wallet bridge. The user connects the intended wallet and approves the transaction in its normal prompt:
 
 ```sh
-pnpm exec forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --account cruxmark-testnet --sender "$CRUXMARK_TEST_WALLET" --broadcast
+pnpm exec forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --sender "$CRUXMARK_TEST_WALLET" --broadcast --browser --slow
 ```
 
-`CRUXMARK_TEST_WALLET` is a public address only. Verify that the active keystore matches it before signing. The user must authorize the keystore prompt; never accept or echo a secret in an agent tool.
+`CRUXMARK_TEST_WALLET` is a public address only. Forge's bridge opens a loopback page at `http://127.0.0.1:9545`; it times out after five minutes without a wallet response. The user must confirm the account, chain 46630, contract creation, zero transaction value and test ETH gas fee in the wallet. An address mismatch fails before signing. This [Foundry browser-wallet guide](https://getfoundry.sh/guides/browser-wallet) documents the flow. If that bridge is unavailable, the user can privately import the test wallet into an encrypted keystore using `pnpm exec cast wallet import cruxmark-testnet --interactive` and substitute `--account cruxmark-testnet` for `--browser`; hidden prompts must never enter agent tools or logs.
 
 Verify the actual public result:
 
