@@ -16,7 +16,7 @@ flowchart LR
     E --> J[Downloadable evidence report]
 ```
 
-The diagram is implemented locally, and the factory is deployed and bytecode-verified on Robinhood Chain Testnet. The static public demo loads and reads that chain; a public wallet-owned scenario still needs a fresh evidence run. The runtime default is local Anvil. Arbitrum Sepolia remains a deployment fallback, using the same mocks and accurately described scope.
+The diagram is implemented locally, and the factory is deployed and bytecode-verified on Robinhood Chain Testnet. The public-chain suite and a separate hosted-browser split run produced independently verified evidence, linked from `README.md`; the hosted-browser run used an ephemeral EIP-1193 test provider. The runtime default is local Anvil. Arbitrum Sepolia remains a deployment fallback, using the same mocks and accurately described scope.
 
 ## Input and unit contract
 

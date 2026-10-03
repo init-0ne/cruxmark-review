@@ -4,7 +4,7 @@ Build a complete demonstration before adding breadth. This is the execution orde
 
 ## Progress
 
-M0–M4 are implemented and verified locally: 41 contract regressions and a 41-action isolated-Anvil check cover all 15 observed suite checks. A browser wallet deployed the factory to Robinhood Chain Testnet and its receipt/bytecode were verified. The public static demo is live and its chain connection was checked. A public scenario run and submission remain M5 release gates. See `STATUS.md` for the actual verified state.
+M0–M4 are implemented and verified locally: 41 contract regressions and a 41-action isolated-Anvil check cover all 15 observed suite checks. A browser wallet deployed the factory to Robinhood Chain Testnet and its receipt/bytecode were verified. The public static demo is live. A complete public-chain run verified 15/15 checks, and a separate run through the hosted browser verified 4/4 split checks; the independent verifier checked their receipt and state evidence. Reviewer source access and submission remain M5 release gates. See `STATUS.md` for the actual verified state.
 
 ## M0 — Foundation
 
