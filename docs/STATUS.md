@@ -17,7 +17,7 @@ Updated October 3, 2026. The core product is locally verified; public release an
 - pnpm run check passed: production TypeScript/build, Solidity formatting, 41 contract tests, and 41 confirmed local actions covering all 15 checks with two independent owners.
 - pnpm run ui:test passed in real Chrome: guided split flow, a browser-produced report independently verified against the local chain, plain-language errors, pending recovery/discard, refusal to clear evidence when a run switch is canceled, and the public-build local-account boundary.
 - UI_FULL=1 pnpm run ui:test passed: 24 guided clicks, 29 confirmed actions, all 15 checks, and a complete report verified against local receipts and historical state.
-- The hosted CI run for fc604a3 had green check and UI jobs. The UI job is now a required full-suite gate; its new configuration needs a hosted run on the release commits.
+- [Hosted CI for ff80782](https://github.com/0xuser64bit/CRUXMARK/actions/runs/37114005669) passed: the required full-browser job and the build/contract/execution job are both green.
 - Read-only public checks on October 2: factory dry-run simulations succeeded on Robinhood Chain Testnet (46630) and Arbitrum Sepolia (421614); neither deployment was broadcast. Robinhood's public RPC served the measured short burst; Arbitrum Sepolia rate-limited some reads. Public RPCs prune historical state, so verify reports promptly or use an archive endpoint for --state.
 
 ## Limits and next release gate
