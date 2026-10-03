@@ -91,6 +91,12 @@ export async function launchBrowser({ width = 1440, height = 900 } = {}) {
       const outcome = await page.eval(`(() => { const b = [...document.querySelectorAll(${JSON.stringify(`${scope} button`)})].find((x) => x.textContent.trim().startsWith(${JSON.stringify(text)})); if (!b) return 'missing'; if (b.disabled) return 'disabled'; b.click(); return 'ok' })()`)
       if (outcome !== 'ok') throw new Error(`Button "${text}" is ${outcome}.`)
     },
+    async trustedClick(selector) {
+      const point = await page.eval(`(() => { const element = document.querySelector(${JSON.stringify(selector)}); if (!element) return null; element.scrollIntoView({ block: 'center' }); const box = element.getBoundingClientRect(); return { x: box.left + box.width / 2, y: box.top + box.height / 2 } })()`)
+      if (!point) throw new Error(`Element "${selector}" is missing.`)
+      await send('Input.dispatchMouseEvent', { type: 'mousePressed', ...point, button: 'left', clickCount: 1 })
+      await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...point, button: 'left', clickCount: 1 })
+    },
     /** Set a React-controlled <select>. */
     select: (selector, value) => page.eval(`(() => { const s = document.querySelector(${JSON.stringify(selector)}); Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(s, ${JSON.stringify(value)}); s.dispatchEvent(new Event('change', { bubbles: true })) })()`),
     text: (selector) => page.eval(`document.querySelector(${JSON.stringify(selector)})?.innerText ?? null`),

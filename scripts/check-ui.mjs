@@ -94,6 +94,11 @@ try {
   stepLog('the guided control completes 4/4 split checks; its browser-produced report verifies on-chain including state')
 
   console.log('Scenario 2: a refused action is explained, not dumped')
+  await page.trustedClick('.exec-history summary')
+  const dialogsBeforeLeaving = page.dialogs.length
+  await page.eval(`location.href = ${JSON.stringify(publicSite.url)}`)
+  await page.waitFor(`location.href === ${JSON.stringify(publicSite.url)}`, 10000, 'public site loaded after warning')
+  assert(page.dialogs.length > dialogsBeforeLeaving, 'leaving a run with confirmed evidence must trigger the browser warning')
   await open(local.url)
   await freshRun()
   await page.select('select[aria-label="Scenario family"]', 'price')

@@ -56,7 +56,7 @@ The existing GitHub repository is private. Reviewer access/invitations and publi
 
 ## Observed demo sequence
 
-The prominent next-action button follows the lab's NEXT line, based on checks recorded in this browser session. Follow it, or use the controls below. Download the JSON before switching runs or reconnecting; the app warns before clearing action history. A browser reload also loses confirmed action history, even though it can recover one unresolved transaction.
+The prominent next-action button follows the lab's NEXT line, based on checks recorded in this browser session. Follow it, or use the controls below. Download the JSON before switching runs, reconnecting, refreshing or closing the tab. The app warns before clearing confirmed action history, but browsers can suppress leave-page prompts, so keep the downloaded file. A reload can recover one unresolved transaction but cannot reconstruct earlier confirmed actions.
 
 A seeded healthy price expires after the sandbox max age (300 chain-seconds), and public testnet blocks arrive continuously, so chain time keeps moving while you talk. If a healthy-control borrow is rejected as unavailable, seed healthy again and borrow promptly; the lab's Input evidence shows the price age the guard compares against that limit.
 
