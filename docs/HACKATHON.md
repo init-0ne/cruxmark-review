@@ -18,7 +18,7 @@ An Arbitrum-chain deployment is required; Sepolia qualifies. Existing projects a
 
 Submission fields request frontend/demo URL, labeled protocol/network addresses, factory/pool and token addresses or N/A, event-period code description, sponsor selections, and an Arbitrum One payout wallet. Private repositories can invite [engineering-AF](https://github.com/engineering-AF).
 
-Source: [HackQuest event page](https://www.hackquest.io/hackathons/Arbitrum-Open-House-Singapore-Online-Buildathon), including its public schedule/form configuration captured during research. Recheck the signed-in event before submitting; registration and submission status for our account are unknown. These times are timezone conversions from metadata, not a legal interpretation of inaccessible terms.
+Source: [HackQuest event page](https://www.hackquest.io/hackathons/Arbitrum-Open-House-Singapore-Online-Buildathon), including its public schedule/form configuration captured during research. The user confirmed registration on October 3; submission is still unconfirmed. Recheck the signed-in event before submitting. These times are timezone conversions from metadata, not a legal interpretation of inaccessible terms.
 
 ## Separate Founder House program
 

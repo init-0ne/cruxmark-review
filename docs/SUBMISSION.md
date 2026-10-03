@@ -1,10 +1,10 @@
 # Submission and demo checklist
 
-This is a working preparation checklist, not a claim that Cruxmark is registered or submitted. Use `HACKATHON.md` for official facts and outstanding rule checks.
+This is a working preparation checklist. The user confirmed registration on October 3; Cruxmark has not been submitted. Use `HACKATHON.md` for official facts and outstanding rule checks.
 
 ## Account and eligibility
 
-- [ ] Confirm HackQuest registration before its registration cutoff.
+- [x] Confirm HackQuest registration before its registration cutoff (user confirmed October 3).
 - [ ] Review accessible event terms and confirm participant/team eligibility.
 - [ ] Confirm team membership and the exact signed-in submission fields.
 - [ ] Supply the user's actual Arbitrum One prize wallet; never generate or guess one for them.
@@ -44,7 +44,7 @@ Clearly state that fault inputs and the unsafe integration are deliberately cons
 - [ ] Submit with buffer before October 4, 21:29 IST (23:59 SGT), after rechecking the event.
 - [ ] Capture submission confirmation and save the submitted source version.
 
-The current setup performs none of the account, external deployment, hosting, invitation or submission actions above. `STATUS.md` is the place to record them as they occur.
+Registration is user-confirmed. External deployment, hosting, invitation and submission actions remain open; `STATUS.md` records verified progress.
 
 ## Locally verified technical readiness
 
