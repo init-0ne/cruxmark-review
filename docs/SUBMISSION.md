@@ -14,7 +14,7 @@ This is a working preparation checklist. The user confirmed registration on Octo
 - [ ] Complete and verify the first scenario on an allowed public testnet.
 - [ ] Give every deployed contract a network, address, purpose and mock/live label.
 - [ ] Record owner, transaction receipts, deployed bytecode, compiler and source commit.
-- [ ] Publish a usable demo URL on a free hosting plan.
+- [x] Publish a usable [demo URL](https://0xuser64bit.github.io/cruxmark-demo/) on free GitHub Pages; the hosted page loaded and read chain 46630 on October 4.
 - [ ] Provide source or actual reviewer access; confirm invitations were accepted if using a private repository.
 - [ ] Explain code written during the event using the actual commit history.
 - [ ] Fill factory/pool/token entries accurately, using N/A when the current implementation has none.
@@ -44,8 +44,8 @@ Clearly state that fault inputs and the unsafe integration are deliberately cons
 - [ ] Submit with buffer before October 4, 21:29 IST (23:59 SGT), after rechecking the event.
 - [ ] Capture submission confirmation and save the submitted source version.
 
-Registration is user-confirmed. External deployment, hosting, invitation and submission actions remain open; `STATUS.md` records verified progress.
+Registration is user-confirmed. The public factory deployment and hosted static demo are verified. A public scenario run, source/reviewer access, eligibility and submission remain open; `STATUS.md` records verified progress.
 
 ## Locally verified technical readiness
 
-All three families, healthy controls, blocked-price repayment, owner isolation, exact report amounts and live receipt/bytecode verification have runnable local checks. The full check includes 41 contract tests and 41 real local actions covering 15 report checks. Follow `RELEASE.md` to capture equivalent public evidence; the public/account/hosting checkboxes above remain open. The source repository is private. Verify required CI against the exact release commit before submission.
+All three families, healthy controls, blocked-price repayment, owner isolation, exact report amounts and live receipt/bytecode verification have runnable local checks. The full check includes 41 contract tests and 41 real local actions covering 15 report checks. Follow `RELEASE.md` to capture equivalent public evidence. The source repository is private and the public demo repository contains only static build assets. Verify required CI against the exact release commit before submission.

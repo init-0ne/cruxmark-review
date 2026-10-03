@@ -4,7 +4,7 @@ Build a complete demonstration before adding breadth. This is the execution orde
 
 ## Progress
 
-M0–M4 are implemented and verified locally: 41 contract regressions and a 41-action isolated-Anvil check cover all 15 observed suite checks. A browser wallet deployed the factory to Robinhood Chain Testnet and its receipt/bytecode were verified. A public scenario run, hosted site and submission remain M5 release gates. See `STATUS.md` for the actual verified state.
+M0–M4 are implemented and verified locally: 41 contract regressions and a 41-action isolated-Anvil check cover all 15 observed suite checks. A browser wallet deployed the factory to Robinhood Chain Testnet and its receipt/bytecode were verified. The public static demo is live and its chain connection was checked. A public scenario run and submission remain M5 release gates. See `STATUS.md` for the actual verified state.
 
 ## M0 — Foundation
 
@@ -38,13 +38,13 @@ Acceptance: a reviewer can reproduce a reported scenario from the code/configura
 
 Obtain a dedicated test wallet/faucet funds, dry-run the existing deployment script on the selected public testnet, broadcast with wallet authorization, confirm receipts/bytecode/ownership, and record a public deployment manifest. Verify each scenario from the published app using a fresh run.
 
-Use free Cloudflare Pages static hosting (`pnpm install --frozen-lockfile`, `pnpm run build`, output `dist`), no paid backend or domain. If build-time secrets become necessary, stop exposing them via Vite and revisit the architecture. Put contract execution in the local/CI or on-chain flow; a free edge function is not a Solidity compilation service.
+Use the free GitHub Pages demo at `https://0xuser64bit.github.io/cruxmark-demo/`, published from a separate public repository containing only built static files. Build with the verified public network/factory settings and Vite base `/cruxmark-demo/`. No paid backend or domain. If build-time secrets become necessary, stop exposing them via Vite and revisit the architecture. Put contract execution in the local/CI or on-chain flow; static hosting does not compile Solidity.
 
 Acceptance: public URL, source/reviewer access, labeled addresses, reproducible scenarios and checklist complete. Prepare a short recording, but check actual submission fields before asserting a duration requirement. Submit before the documented cutoff and capture submission confirmation.
 
 ## Time and priorities
 
-The setup date was October 2, 2026. The public event page checked October 3 displays registration closing October 4 at 21:28 IST and project submission one minute later; confirm registration as soon as possible. M0–M4 are locally verified, so prioritize a real testnet run, public evidence and the release checklist. Freeze code well before cutoff; reserve time for faucets, explorer indexing, recording, uploads and fresh-wallet testing. A new dashboard feature does not outrank a broken core flow.
+The setup date was October 2, 2026. The public event page checked October 3 displays registration closing October 4 at 21:28 IST and project submission one minute later; the user confirmed registration. M0–M4 are locally verified and the static demo is hosted, so prioritize a real testnet run, public evidence and the release checklist. Freeze code well before cutoff; reserve time for faucets, explorer indexing, recording, uploads and fresh-wallet testing. A new dashboard feature does not outrank a broken core flow.
 
 If time becomes constrained, publish one complete split scenario and accurately disclose unfinished coverage. The product still targets three families; a partial demo must never be marketed as all three shipped. A public Arbitrum deployment remains necessary for the event; local-only checks do not satisfy it.
 

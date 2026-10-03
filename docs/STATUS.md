@@ -1,6 +1,6 @@
 # Current status
 
-Updated October 3, 2026. The core product is locally verified and its factory is deployed on Robinhood Chain Testnet; a public scenario run, hosted site and Buildathon submission are still pending.
+Updated October 4, 2026. The core product is locally verified, its factory is deployed on Robinhood Chain Testnet, and the static demo is public. A public scenario run and Buildathon submission are still pending.
 
 ## What works
 
@@ -17,9 +17,10 @@ Updated October 3, 2026. The core product is locally verified and its factory is
 - pnpm run check passed: production TypeScript/build, Solidity formatting, 41 contract tests, and 41 confirmed local actions covering all 15 checks with two independent owners.
 - pnpm run ui:test passed in real Chrome: guided split flow, a browser-produced report independently verified against the local chain, an injected browser-wallet provider signing local transactions after a rejected signature, wrong-network add/switch, plain-language errors, pending recovery/discard, refusal to clear evidence when a run switch is canceled, a real browser leave-page warning after confirmed actions, and the public-build local-account boundary. The new wallet and leave-page assertions failed when their respective behavior was deliberately removed, then passed when restored.
 - UI_FULL=1 pnpm run ui:test passed: 24 guided clicks, 29 confirmed actions, all 15 checks, and a complete report verified against local receipts and historical state.
-- [Hosted CI for 111f19a](https://github.com/0xuser64bit/CRUXMARK/actions/runs/37131060779) passed: the required full-browser job and the build/contract/execution job are both green.
+- [Hosted CI for c79a449](https://github.com/0xuser64bit/CRUXMARK/actions/runs/37131491514) passed: the required full-browser job and the build/contract/execution job are both green.
 - Read-only public checks: factory dry-run simulations succeeded on Robinhood Chain Testnet (46630) and Arbitrum Sepolia (421614). Robinhood's public RPC served the measured short burst; Arbitrum Sepolia rate-limited some reads. Public RPCs prune historical state, so verify reports promptly or use an archive endpoint for --state.
 - The user's Brave wallet signed factory creation on Robinhood Chain Testnet. `pnpm run deployment:verify --network robinhood-testnet` independently confirmed the successful receipt, creation input, block hash, source settings and exact current/historical runtime bytecode. The public [deployment manifest](deployments/robinhood-testnet.json) records address `0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb`, transaction `0x6ffe2bc9adbfac5dc582b41d69b9b37edf25285f80c06bc43f9e72651f488afc` and source revision `111f19a`.
+- The [public static demo](https://0xuser64bit.github.io/cruxmark-demo/) was built from clean `c79a449` with Robinhood Chain Testnet and the verified factory address, then published to a separate [public assets repository](https://github.com/0xuser64bit/cruxmark-demo) on free GitHub Pages. Its Pages build [passed](https://github.com/0xuser64bit/cruxmark-demo/actions/runs/37148417125). The hosted app loaded the execution lab and its read-only connection check reported Robinhood Chain Testnet, chain 46630, at block 128,307,881. This confirms hosting and RPC reads, not a public scenario execution.
 
 ## Limits and next release gate
 
@@ -29,4 +30,4 @@ The user confirmed HackQuest registration on October 3. The official [HackQuest 
 
 The user supplied public test-wallet address `0xC514674B25b721A471c9A0879105539043D08867`. Before broadcast, Robinhood Chain Testnet RPC returned chain ID 46630, a 0.01 test ETH balance and nonce 0 for it. The factory simulation from that address estimated 3,876,458 gas and 0.00007753 test ETH. The browser-wallet broadcast and independent verification then succeeded.
 
-Next: build and publish a free static demo with the verified factory address, run a fresh browser-wallet scenario, verify its downloaded evidence, and submit before the event cutoff. RELEASE.md has the procedure. Wallet secrets must stay outside source, chat, tool output, logs and reports.
+Next: run a fresh browser-wallet scenario in the hosted demo, verify its downloaded evidence, arrange actual source/reviewer access and submit before the event cutoff. RELEASE.md has the procedure. Wallet secrets must stay outside source, chat, tool output, logs and reports.
