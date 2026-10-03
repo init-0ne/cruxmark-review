@@ -20,17 +20,23 @@ The supported release is a static wallet lab and a factory for owned synthetic s
 - Check registration, participant/team eligibility and the signed-in HackQuest form. A legal acceptance or prize-wallet decision belongs to the user; do not guess it.
 - Choose Robinhood Chain Testnet (46630) or Arbitrum Sepolia (421614). Prefer Robinhood. Measured October 2, 2026 with snapshot-shaped load (16 reads per round, ~50 requests per second): the Robinhood public RPC served all 480 requests without a failure, while the Arbitrum Sepolia public RPC answered HTTP 429 for 8 of 30 rounds. A controlled ABBA experiment with a quiet minute before each phase throttled 12/20 and 16/20 rounds sent as separate requests and 16/20 and 13/20 sent as one JSON-RPC batch, so that limiter counts calls and batching does not help. On Arbitrum Sepolia expect occasional "rate-limiting" notices (wait a few seconds and retry), or set `VITE_RPC_URL` to a different free endpoint after checking it. If this ever matters on the primary chain, the lever is fewer calls per snapshot: an on-chain view that returns the whole snapshot would cut about 17 reads to 1-2. It was not built because the primary chain showed no throttling. Official public RPCs are in `src/chains.ts`. Read the actual RPC chain ID before broadcasting; no mainnet fallback exists.
 - Commit/review the release, then run the full checks from the clean source revision. The factory and instance constructors reject unsupported chains.
-- Dry-run the deployment using an encrypted keystore imported by the user. Example for Robinhood testnet:
+- Dry-run the deployment without a signer. The sender here is a public placeholder used only for simulation:
 
 ```sh
-pnpm exec forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --account cruxmark-testnet --sender "$CRUXMARK_TEST_WALLET"
+pnpm exec forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --sender 0x000000000000000000000000000000000000dEaD
 ```
 
-A dry run only simulates; nothing is signed or sent, so any public address works as `--sender`. Dry runs on October 2, 2026 against both official public RPCs succeeded. They estimated 3.88M gas for the factory on Robinhood Chain Testnet at 0.02 gwei (about 0.000078 ETH) and 4.11M gas on Arbitrum Sepolia at 0.083 gwei (about 0.00034 ETH). Each `createScenario()` run costs about 2.6M gas. These are simulation estimates, not charges, and gas prices move, but a small faucet drip covers the whole demo. The RPCs reported chain IDs 0xb626 (46630) and 0x66eee (421614) as documented. The largest contract, the factory, is 13.6 KB against the 24.6 KB limit.
+A dry run only simulates; nothing is signed or sent, so any public address works as `--sender`. Dry runs on October 2, 2026 against both official public RPCs succeeded, and Robinhood was rechecked October 3. The latest Robinhood estimate was 3,876,458 gas at 0.020000001 gwei (about 0.00007753 ETH); Arbitrum Sepolia's October 2 estimate was 4.11M gas at 0.083 gwei (about 0.00034 ETH). Each `createScenario()` run costs about 2.6M gas. These are simulation estimates, not charges, and gas prices move, but a small faucet drip covers the whole demo. The RPCs reported chain IDs 0xb626 (46630) and 0x66eee (421614) as documented. The largest contract, the factory, is 13.6 KB against the 24.6 KB limit.
 
 Forge prints `EIP-3855 is not supported ... 46630 ... might not work properly` for the Robinhood testnet. That warning is expected and does not apply to this build: `contracts/foundry.toml` compiles for `evm_version = "paris"`, which never emits PUSH0. `pnpm run execution:test` proves it by running every action on an Anvil pinned to `--hardfork paris`, where PUSH0 is rejected (`NotActivated`); compiling for Shanghai makes that check fail. Do not raise the EVM target without re-verifying the chain.
 
-After the user can sign and the dry-run/faucet balance are verified, run that command with `--broadcast`. `CRUXMARK_TEST_WALLET` is a public address only. Never pass a private key in an argument or environment file.
+After the user can sign and the dry-run/faucet balance are verified, import the dedicated test wallet into an encrypted Foundry keystore in the user's own terminal with `pnpm exec cast wallet import cruxmark-testnet --interactive`. Use its hidden prompts; never pass a key or keystore password in a command, environment variable, chat or tool output. Broadcast with the wallet's public address as the sender:
+
+```sh
+pnpm exec forge script contracts/script/DeploySandbox.s.sol:DeploySandbox --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --account cruxmark-testnet --sender "$CRUXMARK_TEST_WALLET" --broadcast
+```
+
+`CRUXMARK_TEST_WALLET` is a public address only. Verify that the active keystore matches it before signing. The user must authorize the keystore prompt; never accept or echo a secret in an agent tool.
 
 Verify the actual public result:
 
