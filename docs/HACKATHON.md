@@ -1,14 +1,14 @@
 # Arbitrum Open House Singapore — event context
 
-Research checked October 2, 2026. [User's event link](https://arbitrum-singapore.hackquest.io/buildathons/Arbitrum-Open-House-Singapore-Online-Buildathon); [readable official HackQuest page](https://www.hackquest.io/hackathons/Arbitrum-Open-House-Singapore-Online-Buildathon).
+Research checked October 3, 2026. [User's event link](https://arbitrum-singapore.hackquest.io/buildathons/Arbitrum-Open-House-Singapore-Online-Buildathon); [readable official HackQuest page](https://www.hackquest.io/hackathons/Arbitrum-Open-House-Singapore-Online-Buildathon).
 
 ## Official online facts
 
-Online period: September 14–October 4, 2026. Stored UTC schedule metadata gives:
+Online period: September 14–October 4, 2026. The public schedule checked October 3 displays these UTC values:
 
 | Action | UTC | India (IST) | Singapore (SGT) |
 | --- | --- | --- | --- |
-| Registration closes | Oct 2, 17:01 | Oct 2, 22:31 | Oct 3, 01:01 |
+| Registration closes | Oct 4, 15:58 | Oct 4, 21:28 | Oct 4, 23:58 |
 | Submission closes | Oct 4, 15:59 | Oct 4, 21:29 | Oct 4, 23:59 |
 | Rewards scheduled | Oct 12, 06:00 | Oct 12, 11:30 | Oct 12, 14:00 |
 
@@ -47,7 +47,3 @@ Robinhood Chain Testnet is our primary target because stock-token semantics are 
 ## Research provenance
 
 The earlier workspace research lives at `/Users/user64bit/Documents/Codex/2026-10-02/https-arbitrum-singapore-hackquest-io-buildathons-2/work/research_notes/Arbitrum Singapore buildathon guide/`. `event_rules.md` and `hackquest.html` contain the captured event evidence. Earlier project-example recommendations are superseded by `PRODUCT.md`; do not revive the freelancer platform scope from that guide.
-
-## October 2 hardening-pass recheck
-
-The official HackQuest page still lists the Arbitrum-chain deployment requirement (including both supported public testnets) and the Oct 2 17:01 / Oct 4 15:59 schedule values captured above. The linked terms PDF again returned HTTP 403; participant/team/IP/KYC and precise payout terms remain unverified. No registration/submission confirmation was observed. Public Robinhood testnet chain ID/explorer/RPC were rechecked against its official connecting guide; the public RPC is rate-limited.

@@ -15,7 +15,7 @@ These are useful capabilities available in the current machine's catalog. Read t
 | Skill | When to apply | Location |
 | --- | --- | --- |
 | `cruxmark-build` | Product contracts, scenarios, reports, submission | `.agents/skills/cruxmark-build/SKILL.md` in this repo |
-| `ponytail:ponytail` | Keep implementation minimal; preserve validation/security | `/Users/user64bit/.codex/plugins/cache/ponytail/ponytail/4.10.0/skills/ponytail/SKILL.md` |
+| `ponytail:ponytail` | Keep implementation minimal; preserve validation/security | Use the active runtime skill catalog; plugin cache versions change |
 | `frontend-design` | Build the actual scenario UI with intentional visual choices | `/Users/user64bit/.agents/skills/frontend-design/SKILL.md` |
 | `impeccable:impeccable` | Requested design critique/refinement | `/Users/user64bit/.codex/plugins/cache/impeccable/impeccable/4.4.0/skills/impeccable/SKILL.md` |
 | `plugin-management:plugin-management` | Discover/verify an external integration | `/Users/user64bit/.codex/plugins/cache/openai-curated-remote/plugin-management/0.1.0/skills/plugin-management/SKILL.md` |

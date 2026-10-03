@@ -44,7 +44,7 @@ Acceptance: public URL, source/reviewer access, labeled addresses, reproducible 
 
 ## Time and priorities
 
-The setup date is October 2, 2026. Registration closes tonight in IST; project submission closes October 4. Confirm registration early. Prioritize M1/M2 and a real testnet run, then evidence and the remaining scenarios. Freeze code well before cutoff; reserve time for faucets, explorer indexing, recording, uploads and fresh-wallet testing. A new dashboard feature does not outrank a broken core flow.
+The setup date was October 2, 2026. The public event page checked October 3 displays registration closing October 4 at 21:28 IST and project submission one minute later; confirm registration as soon as possible. M0–M4 are locally verified, so prioritize a real testnet run, public evidence and the release checklist. Freeze code well before cutoff; reserve time for faucets, explorer indexing, recording, uploads and fresh-wallet testing. A new dashboard feature does not outrank a broken core flow.
 
 If time becomes constrained, publish one complete split scenario and accurately disclose unfinished coverage. The product still targets three families; a partial demo must never be marketed as all three shipped. A public Arbitrum deployment remains necessary for the event; local-only checks do not satisfy it.
 

@@ -48,4 +48,4 @@ The current setup performs none of the account, external deployment, hosting, in
 
 ## Locally verified technical readiness
 
-All three families, healthy controls, blocked-price repayment, owner isolation, exact report amounts and live receipt/bytecode verification have runnable local checks. The full check currently includes 41 contract tests and 41 real local actions covering 15 report checks. Follow `RELEASE.md` to capture equivalent public evidence; the public/account/hosting checkboxes above remain open. The existing source repository is private, with earlier baseline CI green; the new release has not been pushed or run remotely in this pass.
+All three families, healthy controls, blocked-price repayment, owner isolation, exact report amounts and live receipt/bytecode verification have runnable local checks. The full check includes 41 contract tests and 41 real local actions covering 15 report checks. Follow `RELEASE.md` to capture equivalent public evidence; the public/account/hosting checkboxes above remain open. The source repository is private. Verify required CI against the exact release commit before submission.

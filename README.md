@@ -68,6 +68,6 @@ Foundry's Forge, Cast, and Anvil are pinned project dependencies with explicitly
 
 For public deployment set `VITE_FACTORY_ADDRESS` to the verified factory address and restart/rebuild the app. The web build verifies that factory’s runtime hash against its compiled source before allowing scenario actions. Recompile/redeploy after contract changes.
 
-The default network is local. Planned public demo target: Robinhood Chain Testnet (46630). Arbitrum Sepolia (421614) is a fallback if faucet access blocks the demo. Public testnet deployment, site publication, and HackQuest registration/submission have not been performed by this setup. No remote Git repository is created automatically.
+The default network is local. Planned public demo target: Robinhood Chain Testnet (46630). Arbitrum Sepolia (421614) is a fallback if faucet access blocks the demo. Public testnet deployment, site publication, and HackQuest registration/submission remain unconfirmed.
 
 Cruxmark is a working project name; domain and trademark availability remain unverified. All security results must state their tested scope. Controlled fault demonstrations are not evidence of a vulnerability in Robinhood, Chainlink, or a third-party protocol.

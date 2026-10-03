@@ -10,7 +10,7 @@ The supported release is a static wallet lab and a factory for owned synthetic s
 4. Run `pnpm run dev`. Redeploy after contract changes or local-chain restarts. Do not reuse old local report hashes after restarting Anvil.
 5. Open the loopback app and choose **Use local test account**, or connect a browser test wallet on chain 31337. The local option uses a disposable unlocked Anvil account, requires loopback app/RPC addresses and is unavailable on public sites/chains. The app never asks for a private key. Create a run and prepare 100 tokens in each consumer. Use the flow below.
 
-`pnpm run ui:test` drives the real web app in headless Chrome against its own ephemeral chain: the split flow end to end, a refused action's wording, a vanished or unrecoverable saved transaction and its discard, and that a public-network build never offers the local test account. It also verifies the report the browser produced against the chain. It needs Chrome (`CHROME_PATH`) and is not part of `pnpm run check`. `UI_FULL=1 pnpm run ui:test` adds a scenario that follows the lab's own NEXT line through all three families until all 15 checks verify, then verifies the complete report on-chain.
+`pnpm run ui:test` drives the real web app in headless Chrome against its own ephemeral chain: the guided split flow, a refused action's wording, a vanished or unrecoverable saved transaction and its discard, a canceled run switch that preserves evidence, and the public-build boundary. It verifies the report the browser produced against the chain. It needs Chrome (`CHROME_PATH`) and is not part of `pnpm run check`. `UI_FULL=1 pnpm run ui:test` follows the lab's NEXT line through all three families until all 15 checks verify, then verifies the complete report on-chain. CI runs that full version as a required job.
 
 `pnpm run execution:test` uses a separate ephemeral chain, two independent owners and the same execution module as the web app. It saves a complete local JSON report under ignored `work/verification/` and shuts its chain down. This independently runnable check does not establish normal browser-wallet signing or a public deployment.
 
@@ -46,11 +46,11 @@ Set the public build environment to the selected `VITE_NETWORK` and verified `VI
 
 Use free Cloudflare Pages static hosting: Node 24, pinned pnpm, `pnpm install --frozen-lockfile`, `pnpm run build`, output `dist`. Set public network/factory values in that build environment. Confirm free-plan/account access; no backend, worker, domain or private key belongs in the deployment. Add `public/_headers` to the output for the security headers included here.
 
-Keep the source private unless the user authorizes publication; the existing GitHub repository is private. Reviewer access/invitations, a remote push and public hosting are separate actions. Check CI for the exact release hash after authorized publication; the earlier green CI run does not cover these local changes.
+The existing GitHub repository is private. Reviewer access/invitations and public hosting are separate release actions. Check CI for the exact release hash after pushing; a green run on an earlier commit does not cover later changes.
 
 ## Observed demo sequence
 
-The lab’s NEXT line names the same sequence from the checks recorded in this browser session. Follow it, or use the order below.
+The prominent next-action button follows the lab's NEXT line, based on checks recorded in this browser session. Follow it, or use the controls below. Download the JSON before switching runs or reconnecting; the app warns before clearing action history. A browser reload also loses confirmed action history, even though it can recover one unresolved transaction.
 
 A seeded healthy price expires after the sandbox max age (300 chain-seconds), and public testnet blocks arrive continuously, so chain time keeps moving while you talk. If a healthy-control borrow is rejected as unavailable, seed healthy again and borrow promptly; the lab's Input evidence shows the price age the guard compares against that limit.
 
