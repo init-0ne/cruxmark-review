@@ -1,0 +1,806 @@
+{
+  "schemaVersion": "cruxmark-evidence/2",
+  "scenario": {
+    "id": "stock-collateral-suite",
+    "version": 2
+  },
+  "run": {
+    "id": "46630:0x949b5507d54675a7f1935c9d223d9ac60463e6e5:0xc514674b25b721a471c9a0879105539043d08867",
+    "owner": "0xC514674B25b721A471c9A0879105539043D08867",
+    "contracts": {
+      "factory": "0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb",
+      "instance": "0x949b5507D54675A7f1935C9d223d9aC60463e6e5",
+      "price": "0xACA4D95F1d12915CD77E34DCB94D8826028ac1a7",
+      "sequencer": "0xcf72B28D7258b4Ff635Ee0c90c05dC4c68899BFe",
+      "token": "0x0045c591Bb7EFe75795f5F791761bc71405aD9Ab",
+      "guard": "0x3002418c399A1BF5907defF049AB5bC9D31Bb7a6",
+      "unsafe": "0x37e226237434cE17aa93Aad37B7E0F9d67fc981B",
+      "guarded": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871"
+    }
+  },
+  "chain": {
+    "id": 46630,
+    "name": "Robinhood Chain Testnet"
+  },
+  "source": {
+    "revision": "c79a4496cc3f67be5b0999fef202bfe50c78df56",
+    "dirty": false,
+    "compiler": "0.8.30",
+    "evmVersion": "paris",
+    "optimizerRuns": 200,
+    "factoryCodeHash": "0xe7512cae6bbb62e90996d1ebcf4497c2e41d4a8749d817403d3b24cfe8c17bb5"
+  },
+  "adapter": "Controlled per-token USD mock; unsafe reapplies uiMultiplier, guarded uses PriceGuard once.",
+  "observations": {
+    "block": {
+      "number": "128313418",
+      "hash": "0x62de48988e88a5091cf3315d7bec033e4935284595659bff1b0f32fef6281419",
+      "timestamp": "1791057317"
+    },
+    "inputs": {
+      "multiplier": "2000000000000000000",
+      "paused": false,
+      "priceDecimals": 8,
+      "price": {
+        "answer": "10000000000",
+        "startedAt": "1791057281",
+        "updatedAt": "1791057281"
+      },
+      "sequencer": {
+        "status": "0",
+        "startedAt": "1791053680",
+        "updatedAt": "1791057281"
+      },
+      "maxAge": "300",
+      "gracePeriod": "3600"
+    },
+    "unsafe": {
+      "collateral": "100000000000000000000",
+      "debt": "12000000000000000000000",
+      "value": "20000000000000000000000",
+      "cap": "12000000000000000000000"
+    },
+    "guarded": {
+      "collateral": "100000000000000000000",
+      "debt": "6000000000000000000000",
+      "value": "10000000000000000000000",
+      "cap": "6000000000000000000000"
+    }
+  },
+  "actions": [
+    {
+      "hash": "0xb4ab7756202471213ca478a69aa97362f4d87911d1077e3711168bc3d7940a1d",
+      "chainId": 46630,
+      "owner": "0xC514674B25b721A471c9A0879105539043D08867",
+      "contracts": {
+        "factory": "0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb",
+        "instance": "0x949b5507D54675A7f1935C9d223d9aC60463e6e5",
+        "price": "0xACA4D95F1d12915CD77E34DCB94D8826028ac1a7",
+        "sequencer": "0xcf72B28D7258b4Ff635Ee0c90c05dC4c68899BFe",
+        "token": "0x0045c591Bb7EFe75795f5F791761bc71405aD9Ab",
+        "guard": "0x3002418c399A1BF5907defF049AB5bC9D31Bb7a6",
+        "unsafe": "0x37e226237434cE17aa93Aad37B7E0F9d67fc981B",
+        "guarded": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871"
+      },
+      "action": {
+        "type": "deposit",
+        "consumer": "unsafe",
+        "amount": "100000000000000000000"
+      },
+      "before": {
+        "block": {
+          "number": "128313090",
+          "hash": "0x7821b36d5cfa10cc7675124d54e66a8fedcd4d6851196228365a25e9d2bc362f",
+          "timestamp": "1791057248"
+        },
+        "inputs": {
+          "multiplier": "1000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057240",
+            "updatedAt": "1791057240"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053639",
+            "updatedAt": "1791057240"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "0",
+          "debt": "0",
+          "value": "0",
+          "cap": "0"
+        },
+        "guarded": {
+          "collateral": "0",
+          "debt": "0",
+          "value": "0",
+          "cap": "0"
+        }
+      },
+      "receipt": {
+        "hash": "0xb4ab7756202471213ca478a69aa97362f4d87911d1077e3711168bc3d7940a1d",
+        "status": "success",
+        "block": {
+          "number": "128313137",
+          "hash": "0x5b8eb5ab331319e9fc47da1735f40f56db0aec40a292a7a8c47d5b32a26f35ef",
+          "timestamp": "1791057256"
+        },
+        "from": "0xc514674b25b721a471c9a0879105539043d08867",
+        "to": "0x37e226237434cE17aa93Aad37B7E0F9d67fc981B",
+        "data": "0xb6b55f250000000000000000000000000000000000000000000000056bc75e2d63100000"
+      },
+      "after": {
+        "block": {
+          "number": "128313137",
+          "hash": "0x5b8eb5ab331319e9fc47da1735f40f56db0aec40a292a7a8c47d5b32a26f35ef",
+          "timestamp": "1791057256"
+        },
+        "inputs": {
+          "multiplier": "1000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057240",
+            "updatedAt": "1791057240"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053639",
+            "updatedAt": "1791057240"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "0",
+          "debt": "0",
+          "value": "0",
+          "cap": "0"
+        }
+      }
+    },
+    {
+      "hash": "0xaa57bdf71a5fa141a09fe7834cb76f4b2cf44b52616a5dc20a36e820bf4c0218",
+      "chainId": 46630,
+      "owner": "0xC514674B25b721A471c9A0879105539043D08867",
+      "contracts": {
+        "factory": "0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb",
+        "instance": "0x949b5507D54675A7f1935C9d223d9aC60463e6e5",
+        "price": "0xACA4D95F1d12915CD77E34DCB94D8826028ac1a7",
+        "sequencer": "0xcf72B28D7258b4Ff635Ee0c90c05dC4c68899BFe",
+        "token": "0x0045c591Bb7EFe75795f5F791761bc71405aD9Ab",
+        "guard": "0x3002418c399A1BF5907defF049AB5bC9D31Bb7a6",
+        "unsafe": "0x37e226237434cE17aa93Aad37B7E0F9d67fc981B",
+        "guarded": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871"
+      },
+      "action": {
+        "type": "deposit",
+        "consumer": "guarded",
+        "amount": "100000000000000000000"
+      },
+      "before": {
+        "block": {
+          "number": "128313158",
+          "hash": "0xf6c059b355b44507b6a9c811b5084bef1866713793a16923cd8be089c5febddf",
+          "timestamp": "1791057261"
+        },
+        "inputs": {
+          "multiplier": "1000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057240",
+            "updatedAt": "1791057240"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053639",
+            "updatedAt": "1791057240"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "0",
+          "debt": "0",
+          "value": "0",
+          "cap": "0"
+        }
+      },
+      "receipt": {
+        "hash": "0xaa57bdf71a5fa141a09fe7834cb76f4b2cf44b52616a5dc20a36e820bf4c0218",
+        "status": "success",
+        "block": {
+          "number": "128313186",
+          "hash": "0x8745710b8fedd50d14da5f8135aa1652bbce5b589521c62e1e349785572e98da",
+          "timestamp": "1791057269"
+        },
+        "from": "0xc514674b25b721a471c9a0879105539043d08867",
+        "to": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871",
+        "data": "0xb6b55f250000000000000000000000000000000000000000000000056bc75e2d63100000"
+      },
+      "after": {
+        "block": {
+          "number": "128313186",
+          "hash": "0x8745710b8fedd50d14da5f8135aa1652bbce5b589521c62e1e349785572e98da",
+          "timestamp": "1791057269"
+        },
+        "inputs": {
+          "multiplier": "1000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057240",
+            "updatedAt": "1791057240"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053639",
+            "updatedAt": "1791057240"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        }
+      }
+    },
+    {
+      "hash": "0x4c9dd08123a1fee54ac83d31e57eb6f67f52a04b2be44458bb14aff5a9dfbbbe",
+      "chainId": 46630,
+      "owner": "0xC514674B25b721A471c9A0879105539043D08867",
+      "contracts": {
+        "factory": "0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb",
+        "instance": "0x949b5507D54675A7f1935C9d223d9aC60463e6e5",
+        "price": "0xACA4D95F1d12915CD77E34DCB94D8826028ac1a7",
+        "sequencer": "0xcf72B28D7258b4Ff635Ee0c90c05dC4c68899BFe",
+        "token": "0x0045c591Bb7EFe75795f5F791761bc71405aD9Ab",
+        "guard": "0x3002418c399A1BF5907defF049AB5bC9D31Bb7a6",
+        "unsafe": "0x37e226237434cE17aa93Aad37B7E0F9d67fc981B",
+        "guarded": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871"
+      },
+      "action": {
+        "type": "configure",
+        "fault": 1
+      },
+      "before": {
+        "block": {
+          "number": "128313199",
+          "hash": "0x4b04e70782d38b3132d945fc0191ee0b35dddaa0bb0680c12f212d9f7688ce89",
+          "timestamp": "1791057272"
+        },
+        "inputs": {
+          "multiplier": "1000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057240",
+            "updatedAt": "1791057240"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053639",
+            "updatedAt": "1791057240"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        }
+      },
+      "receipt": {
+        "hash": "0x4c9dd08123a1fee54ac83d31e57eb6f67f52a04b2be44458bb14aff5a9dfbbbe",
+        "status": "success",
+        "block": {
+          "number": "128313236",
+          "hash": "0x14f53b86a758281a4aa1af06bd6e756f9138b0f0d55f8be185fb2a1db0efd4db",
+          "timestamp": "1791057281"
+        },
+        "from": "0xc514674b25b721a471c9a0879105539043d08867",
+        "to": "0x949b5507D54675A7f1935C9d223d9aC60463e6e5",
+        "data": "0xafe5e6240000000000000000000000000000000000000000000000000000000000000001"
+      },
+      "after": {
+        "block": {
+          "number": "128313236",
+          "hash": "0x14f53b86a758281a4aa1af06bd6e756f9138b0f0d55f8be185fb2a1db0efd4db",
+          "timestamp": "1791057281"
+        },
+        "inputs": {
+          "multiplier": "2000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057281",
+            "updatedAt": "1791057281"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053680",
+            "updatedAt": "1791057281"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "20000000000000000000000",
+          "cap": "12000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        }
+      }
+    },
+    {
+      "hash": "0x156d206b7a32eadc521fbe87a5b5037776c2b2359c2d6c3c2d39a0aa2b33c9cd",
+      "chainId": 46630,
+      "owner": "0xC514674B25b721A471c9A0879105539043D08867",
+      "contracts": {
+        "factory": "0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb",
+        "instance": "0x949b5507D54675A7f1935C9d223d9aC60463e6e5",
+        "price": "0xACA4D95F1d12915CD77E34DCB94D8826028ac1a7",
+        "sequencer": "0xcf72B28D7258b4Ff635Ee0c90c05dC4c68899BFe",
+        "token": "0x0045c591Bb7EFe75795f5F791761bc71405aD9Ab",
+        "guard": "0x3002418c399A1BF5907defF049AB5bC9D31Bb7a6",
+        "unsafe": "0x37e226237434cE17aa93Aad37B7E0F9d67fc981B",
+        "guarded": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871"
+      },
+      "action": {
+        "type": "borrow",
+        "consumer": "unsafe",
+        "amount": "12000000000000000000000"
+      },
+      "before": {
+        "block": {
+          "number": "128313258",
+          "hash": "0x0e4437fdad63972ee371e07a298da532ed48ac526ec6e0264852d4c12b59d570",
+          "timestamp": "1791057285"
+        },
+        "inputs": {
+          "multiplier": "2000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057281",
+            "updatedAt": "1791057281"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053680",
+            "updatedAt": "1791057281"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "20000000000000000000000",
+          "cap": "12000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        }
+      },
+      "receipt": {
+        "hash": "0x156d206b7a32eadc521fbe87a5b5037776c2b2359c2d6c3c2d39a0aa2b33c9cd",
+        "status": "success",
+        "block": {
+          "number": "128313298",
+          "hash": "0x07d2bb35747b3a8f5824bf89a17a5387af3af048b42a4e998781f7072a153c0e",
+          "timestamp": "1791057293"
+        },
+        "from": "0xc514674b25b721a471c9a0879105539043d08867",
+        "to": "0x37e226237434cE17aa93Aad37B7E0F9d67fc981B",
+        "data": "0xc5ebeaec00000000000000000000000000000000000000000000028a857425466f800000"
+      },
+      "after": {
+        "block": {
+          "number": "128313298",
+          "hash": "0x07d2bb35747b3a8f5824bf89a17a5387af3af048b42a4e998781f7072a153c0e",
+          "timestamp": "1791057293"
+        },
+        "inputs": {
+          "multiplier": "2000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057281",
+            "updatedAt": "1791057281"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053680",
+            "updatedAt": "1791057281"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "12000000000000000000000",
+          "value": "20000000000000000000000",
+          "cap": "12000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        }
+      }
+    },
+    {
+      "hash": "0xfd48fcd6566dfb93bace0eb966428b7a67da9f0ecb2be6a6babb7f780cab7d6f",
+      "chainId": 46630,
+      "owner": "0xC514674B25b721A471c9A0879105539043D08867",
+      "contracts": {
+        "factory": "0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb",
+        "instance": "0x949b5507D54675A7f1935C9d223d9aC60463e6e5",
+        "price": "0xACA4D95F1d12915CD77E34DCB94D8826028ac1a7",
+        "sequencer": "0xcf72B28D7258b4Ff635Ee0c90c05dC4c68899BFe",
+        "token": "0x0045c591Bb7EFe75795f5F791761bc71405aD9Ab",
+        "guard": "0x3002418c399A1BF5907defF049AB5bC9D31Bb7a6",
+        "unsafe": "0x37e226237434cE17aa93Aad37B7E0F9d67fc981B",
+        "guarded": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871"
+      },
+      "action": {
+        "type": "borrow",
+        "consumer": "guarded",
+        "amount": "12000000000000000000000",
+        "expectedError": "BorrowExceedsCap"
+      },
+      "before": {
+        "block": {
+          "number": "128313313",
+          "hash": "0x515a5ecb235124ec41c3097b6b593dcdba437457c4607463a538c0f864b2d797",
+          "timestamp": "1791057297"
+        },
+        "inputs": {
+          "multiplier": "2000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057281",
+            "updatedAt": "1791057281"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053680",
+            "updatedAt": "1791057281"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "12000000000000000000000",
+          "value": "20000000000000000000000",
+          "cap": "12000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        }
+      },
+      "receipt": {
+        "hash": "0xfd48fcd6566dfb93bace0eb966428b7a67da9f0ecb2be6a6babb7f780cab7d6f",
+        "status": "reverted",
+        "block": {
+          "number": "128313345",
+          "hash": "0xd415532a33194728503b61cff0537020f3cf0f95820b66343826bde449041c8c",
+          "timestamp": "1791057304"
+        },
+        "from": "0xc514674b25b721a471c9a0879105539043d08867",
+        "to": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871",
+        "data": "0xc5ebeaec00000000000000000000000000000000000000000000028a857425466f800000"
+      },
+      "after": {
+        "block": {
+          "number": "128313345",
+          "hash": "0xd415532a33194728503b61cff0537020f3cf0f95820b66343826bde449041c8c",
+          "timestamp": "1791057304"
+        },
+        "inputs": {
+          "multiplier": "2000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057281",
+            "updatedAt": "1791057281"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053680",
+            "updatedAt": "1791057281"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "12000000000000000000000",
+          "value": "20000000000000000000000",
+          "cap": "12000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        }
+      },
+      "replayError": "BorrowExceedsCap"
+    },
+    {
+      "hash": "0x721904ea6c343c48956fb34e7d89bcb25b400f1d736c7487a9f60af99720dacf",
+      "chainId": 46630,
+      "owner": "0xC514674B25b721A471c9A0879105539043D08867",
+      "contracts": {
+        "factory": "0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb",
+        "instance": "0x949b5507D54675A7f1935C9d223d9aC60463e6e5",
+        "price": "0xACA4D95F1d12915CD77E34DCB94D8826028ac1a7",
+        "sequencer": "0xcf72B28D7258b4Ff635Ee0c90c05dC4c68899BFe",
+        "token": "0x0045c591Bb7EFe75795f5F791761bc71405aD9Ab",
+        "guard": "0x3002418c399A1BF5907defF049AB5bC9D31Bb7a6",
+        "unsafe": "0x37e226237434cE17aa93Aad37B7E0F9d67fc981B",
+        "guarded": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871"
+      },
+      "action": {
+        "type": "borrow",
+        "consumer": "guarded",
+        "amount": "6000000000000000000000"
+      },
+      "before": {
+        "block": {
+          "number": "128313367",
+          "hash": "0x391f23c4c7c0426459d9d7a1ad626e4d3fb334bb651ca7f292e82e00a1c0be83",
+          "timestamp": "1791057308"
+        },
+        "inputs": {
+          "multiplier": "2000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057281",
+            "updatedAt": "1791057281"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053680",
+            "updatedAt": "1791057281"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "12000000000000000000000",
+          "value": "20000000000000000000000",
+          "cap": "12000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "100000000000000000000",
+          "debt": "0",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        }
+      },
+      "receipt": {
+        "hash": "0x721904ea6c343c48956fb34e7d89bcb25b400f1d736c7487a9f60af99720dacf",
+        "status": "success",
+        "block": {
+          "number": "128313418",
+          "hash": "0x62de48988e88a5091cf3315d7bec033e4935284595659bff1b0f32fef6281419",
+          "timestamp": "1791057317"
+        },
+        "from": "0xc514674b25b721a471c9a0879105539043d08867",
+        "to": "0xa51Adfa54dd88Fed8CFA280F1c76A5c6D3233871",
+        "data": "0xc5ebeaec00000000000000000000000000000000000000000000014542ba12a337c00000"
+      },
+      "after": {
+        "block": {
+          "number": "128313418",
+          "hash": "0x62de48988e88a5091cf3315d7bec033e4935284595659bff1b0f32fef6281419",
+          "timestamp": "1791057317"
+        },
+        "inputs": {
+          "multiplier": "2000000000000000000",
+          "paused": false,
+          "priceDecimals": 8,
+          "price": {
+            "answer": "10000000000",
+            "startedAt": "1791057281",
+            "updatedAt": "1791057281"
+          },
+          "sequencer": {
+            "status": "0",
+            "startedAt": "1791053680",
+            "updatedAt": "1791057281"
+          },
+          "maxAge": "300",
+          "gracePeriod": "3600"
+        },
+        "unsafe": {
+          "collateral": "100000000000000000000",
+          "debt": "12000000000000000000000",
+          "value": "20000000000000000000000",
+          "cap": "12000000000000000000000"
+        },
+        "guarded": {
+          "collateral": "100000000000000000000",
+          "debt": "6000000000000000000000",
+          "value": "10000000000000000000000",
+          "cap": "6000000000000000000000"
+        }
+      }
+    }
+  ],
+  "checks": [
+    {
+      "id": "split: correct $10k/$20k valuation and $6k/$12k caps",
+      "status": "verified",
+      "transactionHashes": [
+        "0x4c9dd08123a1fee54ac83d31e57eb6f67f52a04b2be44458bb14aff5a9dfbbbe",
+        "0x156d206b7a32eadc521fbe87a5b5037776c2b2359c2d6c3c2d39a0aa2b33c9cd",
+        "0x721904ea6c343c48956fb34e7d89bcb25b400f1d736c7487a9f60af99720dacf"
+      ]
+    },
+    {
+      "id": "split: unsafe $12k borrow confirmed",
+      "status": "verified",
+      "transactionHashes": [
+        "0x156d206b7a32eadc521fbe87a5b5037776c2b2359c2d6c3c2d39a0aa2b33c9cd"
+      ]
+    },
+    {
+      "id": "split: guarded $12k borrow rejected",
+      "status": "verified",
+      "transactionHashes": [
+        "0xfd48fcd6566dfb93bace0eb966428b7a67da9f0ecb2be6a6babb7f780cab7d6f"
+      ]
+    },
+    {
+      "id": "split: guarded $6k control confirmed",
+      "status": "verified",
+      "transactionHashes": [
+        "0x721904ea6c343c48956fb34e7d89bcb25b400f1d736c7487a9f60af99720dacf"
+      ]
+    },
+    {
+      "id": "paused: unsafe $1k borrow confirmed",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "paused: guarded $1k borrow rejected",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "stale: unsafe $1k borrow confirmed",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "stale: guarded $1k borrow rejected",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "down: unsafe $1k borrow confirmed",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "down: guarded $1k borrow rejected",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "grace: unsafe $1k borrow confirmed",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "grace: guarded $1k borrow rejected",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "healthy: guarded $1k control confirmed",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "unavailable-price: guarded debt repaid while blocked",
+      "status": "incomplete",
+      "transactionHashes": []
+    },
+    {
+      "id": "sequencer: guarded debt repaid while blocked",
+      "status": "incomplete",
+      "transactionHashes": []
+    }
+  ],
+  "result": "partial",
+  "limitations": [
+    "Controlled owner-isolated mock scenarios, not a live exploit, comprehensive audit, or loss guarantee.",
+    "Synthetic collateral and debt; no real token transfers, custody or liquidation execution.",
+    "A reverted receipt has no reason field. Replay errors come from an eth_call at the receipt block, after all transactions in that block; they are not transaction traces.",
+    "RPC observations and receipt inclusion are not L1 finality or independent attestation. Recheck block hashes and transactions on the selected chain.",
+    "Recovery controls simulate timestamps while the chain is operating; they do not interrupt a real sequencer.",
+    "Only verified checks have matching executed behavior; partial reports disclose unexecuted coverage."
+  ],
+  "reproduction": [
+    "Check out source c79a4496cc3f67be5b0999fef202bfe50c78df56; pnpm install --frozen-lockfile; pnpm run check.",
+    "Use chain 46630, verify factory bytecode hash 0xe7512cae6bbb62e90996d1ebcf4497c2e41d4a8749d817403d3b24cfe8c17bb5, then connect a test wallet and create its own isolated run.",
+    "Deposit 100 synthetic tokens into each consumer. Never send real assets to these contracts.",
+    "deposit(100000000000000000000) on unsafe; observed receipt success.",
+    "deposit(100000000000000000000) on guarded; observed receipt success.",
+    "configureScenario(1) on the owned instance; observed receipt success.",
+    "borrow(12000000000000000000000) on unsafe; observed receipt success.",
+    "borrow(12000000000000000000000) on guarded; observed receipt reverted.",
+    "borrow(6000000000000000000000) on guarded; observed receipt success.",
+    "Compare receipts, calldata, input timestamps and block hashes against this report. Unavailable-price and recovery outcomes depend on the recorded chain time.",
+    "Re-check this file against the chain: pnpm run report:verify <this-file> --rpc-url <RPC for the chain above>. Add --state with an RPC that still serves these blocks to also compare the recorded state snapshots and rejection reasons."
+  ]
+}

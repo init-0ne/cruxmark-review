@@ -356,6 +356,13 @@ h2 span { color: #9aafbf; }
 .exec-next { margin: 8px 0 0; color: #e1edf4; font-size: 14px; line-height: 1.6; }
 .exec-next .mono { color: var(--ice); margin-right: 10px; letter-spacing: .08em; font-size: 10px; }
 .exec-focus-button { flex: 0 0 auto; min-height: 47px; white-space: nowrap; }
+.exec-proof { display: flex; align-items: center; justify-content: space-between; gap: 30px; padding: 20px 28px; border-bottom: 1px solid var(--line); background: #101f29; }
+.exec-proof > div:first-child { max-width: 680px; }
+.exec-proof-title { margin: 7px 0; font-family: Sora, sans-serif; font-size: 17px; letter-spacing: -.035em; }
+.exec-proof-title strong { color: var(--ice); font-weight: 600; }
+.exec-proof-detail { margin: 0; color: #9ab0c1; font-size: 11px; line-height: 1.7; }
+.exec-proof-links { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 9px 18px; max-width: 325px; }
+.exec-proof-links a { color: var(--ice); font-size: 11px; text-decoration: underline; text-underline-offset: 3px; }
 .exec-borrow { border-top: 1px solid var(--line); border-left: 0; }
 .exec-checks { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 20px; }
 .exec-checks ul { list-style: none; padding: 0; display: grid; gap: 10px; }
@@ -371,4 +378,5 @@ h2 span { color: #9aafbf; }
 .exec-notice { overflow-wrap: anywhere; }
 .exec-spinner { display: inline-block; width: 12px; height: 12px; border: 1px solid #426074; border-top-color: var(--ice); border-radius: 50%; margin-right: 9px; vertical-align: middle; animation: exec-spin 1s linear infinite; }
 @keyframes exec-spin { to { transform: rotate(360deg); } }
+@media (max-width: 700px) { .exec-proof { align-items: flex-start; flex-direction: column; gap: 14px; padding-inline: 20px; } .exec-proof-links { max-width: none; } }
 @media (max-width: 600px) { .exec-checks li { align-items: flex-start; } .exec-toolbar, .exec-focus { padding-inline: 20px; } .exec-focus { align-items: stretch; flex-direction: column; gap: 14px; } .exec-focus-button { width: 100%; justify-content: space-between; white-space: normal; } }

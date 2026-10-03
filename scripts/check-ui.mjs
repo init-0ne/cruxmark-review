@@ -159,9 +159,15 @@ try {
   assert.equal(await page.text('.network-panel h3'), 'Robinhood Chain Testnet')
   assert.equal(await page.eval(`[...document.querySelectorAll('#execute button')].some((x) => x.textContent.includes('Use local test account'))`), false)
   assert.equal(await page.eval(`[...document.querySelectorAll('#execute a')].some((a) => a.href.startsWith('https://faucet.testnet.chain.robinhood.com'))`), true)
+  const examples = await page.eval(`Promise.all([...document.querySelectorAll('.exec-proof-links a[download]')].map(async (link) => { const response = await fetch(link.href); return { status: response.status, report: await response.json() } }))`)
+  assert.equal(examples.length, 2, 'the public lab links both verified reference reports')
+  assert(examples.every((item) => item.status === 200 && validateEvidenceReport(item.report)), 'both downloadable references must be served and structurally valid')
+  assert.equal(examples[0].report.result, 'complete')
+  assert.equal(examples[0].report.checks.filter((item) => item.status === 'verified').length, 15)
+  assert.equal(examples[1].report.checks.filter((item) => item.status === 'verified').length, 4)
   await page.click('Connect wallet')
   await notice('No wallet found', 10000)
-  stepLog('no local account on a public chain; faucet offered; a missing wallet is explained')
+  stepLog('no local account on a public chain; both evidence downloads resolve; a missing wallet is explained')
 
   if (process.env.UI_FULL) {
     // Opt-in (UI_FULL=1, about 3 minutes): the lab's own NEXT line is the oracle. Click whatever it names until every family
