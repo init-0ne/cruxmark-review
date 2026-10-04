@@ -6,7 +6,7 @@
 
 Use `STATUS.md` to resume verified work and `BUILD_PLAN.md` for priorities. Record a consequential new decision where it belongs and summarize it in status. Avoid multiple conflicting copies of the spec or a separate speculative “memory engine.”
 
-The active workspace is `/Users/user64bit/Code/cruxmark`. Repository-local instructions apply here.
+The active workspace is the repository root. Repository-local instructions apply here.
 
 ## Skill routing
 
@@ -16,12 +16,12 @@ These are useful capabilities available in the current machine's catalog. Read t
 | --- | --- | --- |
 | `cruxmark-build` | Product contracts, scenarios, reports, submission | `.agents/skills/cruxmark-build/SKILL.md` in this repo |
 | `ponytail:ponytail` | Keep implementation minimal; preserve validation/security | Use the active runtime skill catalog; plugin cache versions change |
-| `frontend-design` | Build the actual scenario UI with intentional visual choices | `/Users/user64bit/.agents/skills/frontend-design/SKILL.md` |
-| `impeccable:impeccable` | Requested design critique/refinement | `/Users/user64bit/.codex/plugins/cache/impeccable/impeccable/4.4.0/skills/impeccable/SKILL.md` |
-| `plugin-management:plugin-management` | Discover/verify an external integration | `/Users/user64bit/.codex/plugins/cache/openai-curated-remote/plugin-management/0.1.0/skills/plugin-management/SKILL.md` |
-| `skill-creator` | Maintain the scoped project skill | `/Users/user64bit/.codex/skills/.system/skill-creator/SKILL.md` |
-| `rote` / `rote-shell` | Reusable workflow/process evidence when that is actually needed; ordinary build/package loops can remain native | `/Users/user64bit/.agents/skills/rote/SKILL.md` and `rote-shell/SKILL.md` |
-| Browser skills | Observe/test the UI through enabled browser tools; read the matching skill first | `/Users/user64bit/.agents/skills/synced/89f9e4b4-062e-489e-9d15-f5e0463488f6_790b4f39-e62c-4e65-ba92-9af335782fab/built-in-browser/SKILL.md` (or `chrome-browser`) |
+| `frontend-design` | Build the actual scenario UI with intentional visual choices | `~/.agents/skills/frontend-design/SKILL.md` |
+| `impeccable:impeccable` | Requested design critique/refinement | `~/.codex/plugins/cache/impeccable/impeccable/4.4.0/skills/impeccable/SKILL.md` |
+| `plugin-management:plugin-management` | Discover/verify an external integration | `~/.codex/plugins/cache/openai-curated-remote/plugin-management/0.1.0/skills/plugin-management/SKILL.md` |
+| `skill-creator` | Maintain the scoped project skill | `~/.codex/skills/.system/skill-creator/SKILL.md` |
+| `rote` / `rote-shell` | Reusable workflow/process evidence when that is actually needed; ordinary build/package loops can remain native | `~/.agents/skills/rote/SKILL.md` and `rote-shell/SKILL.md` |
+| Browser skills | Observe/test the UI through enabled browser tools; read the matching skill first | `~/.agents/skills/synced/89f9e4b4-062e-489e-9d15-f5e0463488f6_790b4f39-e62c-4e65-ba92-9af335782fab/built-in-browser/SKILL.md` (or `chrome-browser`) |
 
 No Solidity-specific skill was present in the current catalog. Solidity decisions therefore use the repository's domain skill, tested code and authoritative issuer/Chainlink/Foundry/Arbitrum documentation. Do not install a Solana skill for an EVM project or treat agent instructions as an audit tool.
 

@@ -46,4 +46,4 @@ Robinhood Chain Testnet is our primary target because stock-token semantics are 
 
 ## Research provenance
 
-The earlier workspace research lives at `/Users/user64bit/Documents/Codex/2026-10-02/https-arbitrum-singapore-hackquest-io-buildathons-2/work/research_notes/Arbitrum Singapore buildathon guide/`. `event_rules.md` and `hackquest.html` contain the captured event evidence. Earlier project-example recommendations are superseded by `PRODUCT.md`; do not revive the freelancer platform scope from that guide.
+The captured event evidence (`event_rules.md` and `hackquest.html`) from the October 2 research is kept outside this repository on the maintainer's machine. Earlier project-example recommendations are superseded by `PRODUCT.md`; do not revive the freelancer platform scope from that guide.
