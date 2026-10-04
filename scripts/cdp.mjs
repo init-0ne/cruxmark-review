@@ -23,18 +23,25 @@ export async function launchBrowser({ width = 1440, height = 900 } = {}) {
   const flags = ['--headless=new', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--disable-gpu', `--window-size=${width},${height}`, ...(process.env.CI ? ['--no-sandbox'] : [])]
   const chrome = spawn(findChrome(), [...flags, 'about:blank'], { stdio: 'ignore' })
   let target
-  for (let i = 0; i < 100 && !target; i++) {
+  // Wait on time, not attempts: the debugging port can answer before the page target exists,
+  // and a cold CI runner can take many seconds to start Chrome.
+  for (const deadline = Date.now() + 30000; !target && chrome.exitCode === null && Date.now() < deadline;) {
     try {
       const port = readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]
       target = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find((item) => item.type === 'page')
-    } catch { await pause(100) }
+    } catch { /* Chrome is still starting */ }
+    if (!target) await pause(100)
   }
   const stop = async () => {
     chrome.kill('SIGKILL')
     await new Promise((resolve) => (chrome.exitCode !== null ? resolve() : chrome.once('exit', resolve)))
     rmSync(profile, { recursive: true, force: true, maxRetries: 3 })
   }
-  if (!target) { await stop(); throw new Error('Chrome did not expose a debugging page.') }
+  if (!target) {
+    const exited = chrome.exitCode
+    await stop()
+    throw new Error(exited === null ? 'Chrome did not expose a debugging page within 30 s.' : `Chrome exited with code ${exited} before exposing a debugging page.`)
+  }
   const socket = new WebSocket(target.webSocketDebuggerUrl)
   await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject })
 
