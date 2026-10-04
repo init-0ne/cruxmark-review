@@ -38,7 +38,7 @@ Acceptance: a reviewer can reproduce a reported scenario from the code/configura
 
 Obtain a dedicated test wallet/faucet funds, dry-run the existing deployment script on the selected public testnet, broadcast with wallet authorization, confirm receipts/bytecode/ownership, and record a public deployment manifest. Verify each scenario from the published app using a fresh run.
 
-Use the free GitHub Pages demo at `https://0xuser64bit.github.io/cruxmark-demo/`, published from a separate public repository containing only built static files. Build with the verified public network/factory settings and Vite base `/cruxmark-demo/`. No paid backend or domain. If build-time secrets become necessary, stop exposing them via Vite and revisit the architecture. Put contract execution in the local/CI or on-chain flow; static hosting does not compile Solidity.
+Use the demo at `https://cruxmark.vercel.app/`, deployed from compiled static files with Vite base `/` and the verified public network/factory settings. The free [GitHub Pages build](https://0xuser64bit.github.io/cruxmark-demo/) remains a fallback, published from a separate public repository containing only built static files and public evidence. No paid backend or domain. If build-time secrets become necessary, stop exposing them via Vite and revisit the architecture. Put contract execution in the local/CI or on-chain flow; static hosting does not compile Solidity.
 
 Acceptance: public URL, source/reviewer access, labeled addresses, reproducible scenarios and checklist complete. Prepare a short recording, but check actual submission fields before asserting a duration requirement. Submit before the documented cutoff and capture submission confirmation.
 

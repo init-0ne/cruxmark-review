@@ -16,7 +16,7 @@ The [submission copy](SUBMISSION_COPY.md) contains the verified project descript
 - [x] Complete and independently verify all 15 scenario checks on eligible Robinhood Chain Testnet; separately verify 4/4 split checks from the hosted browser.
 - [x] Record each public-run contract's network, address, role and controlled-mock scope in the evidence reports.
 - [x] Record owner, transaction receipts, deployed bytecode, compiler and source commit in the reports and factory manifest.
-- [x] Publish a usable [demo URL](https://0xuser64bit.github.io/cruxmark-demo/) on free GitHub Pages; the hosted page loaded and read chain 46630 on October 4.
+- [x] Publish the primary [Vercel demo](https://cruxmark.vercel.app/) and retain the [GitHub Pages fallback](https://0xuser64bit.github.io/cruxmark-demo/); both loaded and read chain 46630 on October 4.
 - [ ] Confirm `engineering-AF` accepted read permission to the [private judging mirror](https://github.com/init-0ne/cruxmark-review); invitation `336001549` is pending.
 - [x] Prepare event-period code history for the submission form.
 - [x] Prepare accurate factory/pool/token entries, with N/A for pool and token.

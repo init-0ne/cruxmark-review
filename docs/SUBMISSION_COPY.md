@@ -16,12 +16,13 @@ Use these facts in the signed-in HackQuest submission form. The registered user 
 
 ## Links and deployment
 
-- **Frontend/demo:** https://0xuser64bit.github.io/cruxmark-demo/
+- **Frontend/demo:** https://cruxmark.vercel.app/
+- **Fallback demo:** https://0xuser64bit.github.io/cruxmark-demo/
 - **Source for judging:** https://github.com/init-0ne/cruxmark-review (private full-history mirror; `engineering-AF` invited with read permission, acceptance pending)
 - **Original source:** https://github.com/0xuser64bit/CRUXMARK (private)
 - **Public demo assets:** https://github.com/0xuser64bit/cruxmark-demo (compiled static files and public evidence JSON only)
-- **Complete public evidence:** https://0xuser64bit.github.io/cruxmark-demo/evidence/robinhood-testnet-complete.json (29 on-chain actions; 15/15 checks)
-- **Hosted-browser split evidence:** https://0xuser64bit.github.io/cruxmark-demo/evidence/robinhood-testnet-browser-split.json (6 on-chain actions; 4/4 checks)
+- **Complete public evidence:** https://cruxmark.vercel.app/evidence/robinhood-testnet-complete.json (29 on-chain actions; 15/15 checks)
+- **Hosted-browser split evidence:** https://cruxmark.vercel.app/evidence/robinhood-testnet-browser-split.json (6 on-chain actions; 4/4 checks)
 - **Network:** Robinhood Chain Testnet, chain ID 46630. The [official event page](https://www.hackquest.io/hackathons/Arbitrum-Open-House-Singapore-Online-Buildathon) explicitly lists Robinhood Chain as an eligible Arbitrum chain.
 - **Core/factory contract:** `0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb` — `ScenarioFactory`, creates isolated owned test runs; no privileged factory owner.
 - **Factory creation transaction:** `0x6ffe2bc9adbfac5dc582b41d69b9b37edf25285f80c06bc43f9e72651f488afc` — receipt succeeded and exact deployed bytecode was independently verified. [Manifest](deployments/robinhood-testnet.json).
@@ -36,7 +37,7 @@ The repository started October 2, 2026, during the September 14–October 4 onli
 
 ## Evidence and limits
 
-**Public scenario evidence:** The complete test-wallet run at [`0xd2CF…8ACE`](https://explorer.testnet.chain.robinhood.com/address/0xd2CF058b3ac9840Bf88F09B25d3f71E1fF628ACE) executed 29 public transactions and covered 15/15 checks across split, paused/stale price and sequencer recovery. Independent `report:verify --state` confirmed all receipts, calldata, block facts, events and 59 historical snapshots/revert replays. A separate run through the hosted web app used an ephemeral EIP-1193 provider in headless Chrome and covered 4/4 split checks, with six receipts and 13 historical snapshots/revert replays verified. The user's Brave extension signed the factory deployment; it has not signed a complete browser scenario.
+**Public scenario evidence:** The complete test-wallet run at [`0xd2CF…8ACE`](https://explorer.testnet.chain.robinhood.com/address/0xd2CF058b3ac9840Bf88F09B25d3f71E1fF628ACE) executed 29 public transactions and covered 15/15 checks across split, paused/stale price and sequencer recovery. Independent `report:verify --state` confirmed all receipts, calldata, block facts, events and 59 historical snapshots/revert replays. A separate run through the GitHub Pages build used an ephemeral EIP-1193 provider in headless Chrome and covered 4/4 split checks, with six receipts and 13 historical snapshots/revert replays verified. The Vercel deployment serves the same app implementation and public reports; its live chain read was checked separately. The user's Brave extension signed the factory deployment; it has not signed a complete browser scenario.
 
 **Reproduce:** Open the demo in a browser with a test wallet on Robinhood Chain Testnet. Choose Stock split, connect, create an isolated run and follow the lab's NEXT action. Download the JSON before refreshing or switching runs. Run `pnpm run report:verify <downloaded-file> --state` promptly against the public RPC; the public RPC prunes historical state. The report verifier separately checks receipts, calldata, block hashes, events, deployment and ownership. A partial report stays labeled partial.
 
