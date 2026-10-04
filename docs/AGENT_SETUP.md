@@ -67,8 +67,6 @@ A contract, frontend and reviewer role can be handled sequentially by one agent.
 | Storage/reports | Downloadable JSON and explorer evidence | No permanent storage service guarantee |
 | AI use | No AI API required in the product | Existing Codex plan is separate from incremental app infrastructure cost |
 
-Cloudflare Pages' free plan currently allows 500 builds/month, with build/file limits; our static output fits that model. [Official limits](https://developers.cloudflare.com/pages/platform/limits/)
-
 Standard GitHub runners are free for public repositories. Private-repository included quotas depend on the account plan; limit workflows and do not enable additional paid usage. [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
 
 No always-on compilation server, enterprise uptime, production liquidity, custom domain or mainnet deployment is included in the $0 promise. Do not present free tiers as unlimited infrastructure.
