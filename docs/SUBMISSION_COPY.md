@@ -1,6 +1,6 @@
 # Cruxmark — submission copy
 
-Use these facts in the signed-in HackQuest submission form. Replace the public-run and source-access lines only after they are verified. The registered user must review eligibility, legal terms and the Arbitrum One prize wallet themselves. [Submission checklist](SUBMISSION.md) records what remains open.
+Use these facts in the signed-in HackQuest submission form. The registered user must review eligibility, legal terms and the Arbitrum One prize wallet themselves. Confirm that the official reviewer accepted the private read-only invitation before treating source access as complete. [Submission checklist](SUBMISSION.md) records what remains open.
 
 ## Project
 
@@ -17,23 +17,26 @@ Use these facts in the signed-in HackQuest submission form. Replace the public-r
 ## Links and deployment
 
 - **Frontend/demo:** https://0xuser64bit.github.io/cruxmark-demo/
-- **Source:** https://github.com/0xuser64bit/CRUXMARK (private; reviewer access still needs resolution)
-- **Public demo assets:** https://github.com/0xuser64bit/cruxmark-demo (compiled static files only)
+- **Source for judging:** https://github.com/init-0ne/cruxmark-review (private full-history mirror; `engineering-AF` invited with read permission, acceptance pending)
+- **Original source:** https://github.com/0xuser64bit/CRUXMARK (private)
+- **Public demo assets:** https://github.com/0xuser64bit/cruxmark-demo (compiled static files and public evidence JSON only)
+- **Complete public evidence:** https://0xuser64bit.github.io/cruxmark-demo/evidence/robinhood-testnet-complete.json (29 on-chain actions; 15/15 checks)
+- **Hosted-browser split evidence:** https://0xuser64bit.github.io/cruxmark-demo/evidence/robinhood-testnet-browser-split.json (6 on-chain actions; 4/4 checks)
 - **Network:** Robinhood Chain Testnet, chain ID 46630. The [official event page](https://www.hackquest.io/hackathons/Arbitrum-Open-House-Singapore-Online-Buildathon) explicitly lists Robinhood Chain as an eligible Arbitrum chain.
 - **Core/factory contract:** `0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb` — `ScenarioFactory`, creates isolated owned test runs; no privileged factory owner.
 - **Factory creation transaction:** `0x6ffe2bc9adbfac5dc582b41d69b9b37edf25285f80c06bc43f9e72651f488afc` — receipt succeeded and exact deployed bytecode was independently verified. [Manifest](deployments/robinhood-testnet.json).
 - **Pool:** N/A. The two per-run consumers account for synthetic borrowing, not a liquidity pool.
 - **Token contract:** N/A. No transferable collateral or debt token is deployed; the per-run `MockStockStatus` is a controlled status input, not an ERC-20.
-- **Per-run contracts:** Each `ScenarioInstance` creates its own mock price feed, sequencer feed, stock-status input, price guard and unsafe/guarded consumers. Obtain their exact addresses from a verified downloaded report before listing them as a public result.
+- **Complete run:** `0xd2CF058b3ac9840Bf88F09B25d3f71E1fF628ACE`; each `ScenarioInstance` creates its own mock price feed, sequencer feed, stock-status input, price guard and unsafe/guarded consumers. Their exact addresses and roles are in the complete report.
 - **Sponsor technology:** Robinhood Chain Testnet for deployment. Do not select USDG, Stylus, a real Robinhood stock token or a production oracle; none is integrated.
 
 ## Code produced during the Buildathon
 
-The repository started October 2, 2026, during the September 14–October 4 online Buildathon. Structured commits show the foundation and interface (`205b755`, `339cfa1`), the isolated contract suite (`b3d8132`, `3c26d0c`, `26022e4`), browser-wallet execution and evidence (`b1fe0c5`, `c88584f`, `f12c4f8`), independent deployment/report checks and browser regressions (`0788133`, `fe254cc`, `eb7e2b5`, `f26c606`), and the verified testnet factory/public demo (`c79a449`, `863f5b5`). The source repository contains the full history. The latest [hosted CI for `863f5b5`](https://github.com/0xuser64bit/CRUXMARK/actions/runs/37148543346) passed its build, 41 Solidity tests, 41 local EVM actions and full browser suite. That local coverage does not by itself assert a successful public scenario run.
+The repository started October 2, 2026, during the September 14–October 4 online Buildathon. Structured commits show the foundation and interface (`205b755`, `339cfa1`), the isolated contract suite (`b3d8132`, `3c26d0c`, `26022e4`), browser-wallet execution and evidence (`b1fe0c5`, `c88584f`, `f12c4f8`), independent deployment/report checks and browser regressions (`0788133`, `fe254cc`, `eb7e2b5`, `f26c606`), and the verified testnet factory/public demo (`c79a449`, `bf1941e`, `c131f3e`). The private judging mirror contains the full history. Local `pnpm run check`, `UI_FULL=1 pnpm run ui:test` and `pnpm run doctor` passed for the public evidence release; check hosted CI for the final pushed source revision before submitting.
 
 ## Evidence and limits
 
-**Public scenario evidence:** Pending a fresh browser-wallet run and independent `pnpm run report:verify` result. Add the report's run address, verified checks and transaction links only after those actions succeed on chain 46630.
+**Public scenario evidence:** The complete test-wallet run at [`0xd2CF…8ACE`](https://explorer.testnet.chain.robinhood.com/address/0xd2CF058b3ac9840Bf88F09B25d3f71E1fF628ACE) executed 29 public transactions and covered 15/15 checks across split, paused/stale price and sequencer recovery. Independent `report:verify --state` confirmed all receipts, calldata, block facts, events and 59 historical snapshots/revert replays. A separate run through the hosted web app used an ephemeral EIP-1193 provider in headless Chrome and covered 4/4 split checks, with six receipts and 13 historical snapshots/revert replays verified. The user's Brave extension signed the factory deployment; it has not signed a complete browser scenario.
 
 **Reproduce:** Open the demo in a browser with a test wallet on Robinhood Chain Testnet. Choose Stock split, connect, create an isolated run and follow the lab's NEXT action. Download the JSON before refreshing or switching runs. Run `pnpm run report:verify <downloaded-file> --state` promptly against the public RPC; the public RPC prunes historical state. The report verifier separately checks receipts, calldata, block hashes, events, deployment and ownership. A partial report stays labeled partial.
 
