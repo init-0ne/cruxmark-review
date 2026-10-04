@@ -135,7 +135,8 @@ h2 span { color: #9aafbf; }
 .method-note { display: flex; align-items: center; gap: 10px; margin-top: 44px; font-size: 10px; color: #9bb1c1; }
 .foundation-section { border-top: 1px solid var(--line); padding-top: 83px; padding-bottom: 90px; display: grid; grid-template-columns: 1fr .83fr; gap: 120px; align-items: start; }
 .foundation-copy > p:not(.eyebrow) { font-size: 14px; line-height: 1.9; color: #a9bdcb; margin: 22px 0; max-width: 450px; }
-.foundation-copy > .text-link { color: var(--ice); font-size: 11px; }
+.foundation-links { display: flex; flex-wrap: wrap; gap: 14px 30px; }
+.foundation-copy .text-link { color: var(--ice); font-size: 11px; }
 .local-guide { margin-top: 25px; max-width: 450px; font-size: 11px; color: #a8bdcb; border-block: 1px solid var(--line); }
 .local-guide summary { color: #ccdae3; cursor: pointer; padding-block: 14px; display: flex; justify-content: space-between; align-items: center; }
 .local-guide summary::-webkit-details-marker { display: none; }
