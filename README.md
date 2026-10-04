@@ -22,15 +22,15 @@ Unit tests written against happy-path mocks rarely exercise these cases. Cruxmar
 
 | What | Where | Verified |
 | --- | --- | --- |
-| `ScenarioFactory` | [`0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb`](https://explorer.testnet.chain.robinhood.com/address/0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb) | Creation receipt, input and exact runtime bytecode against this source ([manifest](docs/deployments/robinhood-testnet.json)) |
+| `ScenarioFactory` | [`0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb`](https://explorer.testnet.chain.robinhood.com/address/0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb) | Creation receipt, input and exact runtime bytecode against this source ([manifest](docs/deployments/robinhood-testnet.json)); source fully verified on the explorer |
 | Complete suite run | [`0xd2CF…8ACE`](https://explorer.testnet.chain.robinhood.com/address/0xd2CF058b3ac9840Bf88F09B25d3f71E1fF628ACE) | 29 transactions, **15/15 checks**; `report:verify --state` matched every receipt, calldata, block hash, event and 59 historical state snapshots ([report](public/evidence/robinhood-testnet-complete.json)) |
 | Hosted-browser split run | In the [report](public/evidence/robinhood-testnet-browser-split.json) | Exported from the published web app; 6 transactions, 4/4 split checks, 13 state snapshots re-verified |
 
-Each run deploys its own mock inputs and consumers, owned by the wallet that created it, so public users never share fault state. The complete run was signed by a test wallet; the browser split run used an ephemeral EIP-1193 provider in headless Chrome.
+The factory and all seven contracts of the complete run (instance, price and sequencer feeds, token status, guard, unsafe and guarded consumers) are fully verified on the [Robinhood Chain Testnet explorer](https://explorer.testnet.chain.robinhood.com/address/0xd2CF058b3ac9840Bf88F09B25d3f71E1fF628ACE), so you can read their source and live state there. Each run deploys its own mock inputs and consumers, owned by the wallet that created it, so public users never share fault state. The complete run was signed by a test wallet; the browser split run used an ephemeral EIP-1193 provider in headless Chrome.
 
 ## Try it
 
-1. Open the [live demo](https://cruxmark.vercel.app/) with a browser wallet holding Robinhood Chain Testnet test ETH. The app offers to add or switch to chain 46630.
+1. Open the [live demo](https://cruxmark.vercel.app/) with a browser wallet holding Robinhood Chain Testnet test ETH ([faucet](https://faucet.testnet.chain.robinhood.com)). The app offers to add or switch to chain 46630.
 2. In the execution lab, choose **Stock split**, connect and create an isolated run.
 3. Follow the **NEXT** button: prepare both positions, seed the split, borrow $12k through the unsafe consumer, watch the guarded consumer reject the same borrow, borrow the correct $6k and repay.
 4. Repeat with paused price, stale price, sequencer down and recovery grace to cover all 15 checks.

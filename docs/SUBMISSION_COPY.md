@@ -24,6 +24,7 @@ Use these facts in the signed-in HackQuest submission form. The registered user 
 - **Hosted-browser split evidence:** https://cruxmark.vercel.app/evidence/robinhood-testnet-browser-split.json (6 on-chain actions; 4/4 checks)
 - **Network:** Robinhood Chain Testnet, chain ID 46630. The [official event page](https://www.hackquest.io/hackathons/Arbitrum-Open-House-Singapore-Online-Buildathon) explicitly lists Robinhood Chain as an eligible Arbitrum chain.
 - **Core/factory contract:** `0xabf626f8a3f98e8046d2a85973a36b5a06c0d3fb` — `ScenarioFactory`, creates isolated owned test runs; no privileged factory owner.
+- **Explorer source verification:** the factory and all seven contracts of the complete run are fully verified on the Robinhood Chain Testnet explorer (Blockscout), with constructor arguments matching the complete report.
 - **Factory creation transaction:** `0x6ffe2bc9adbfac5dc582b41d69b9b37edf25285f80c06bc43f9e72651f488afc` — receipt succeeded and exact deployed bytecode was independently verified. [Manifest](deployments/robinhood-testnet.json).
 - **Pool:** N/A. The two per-run consumers account for synthetic borrowing, not a liquidity pool.
 - **Token contract:** N/A. No transferable collateral or debt token is deployed; the per-run `MockStockStatus` is a controlled status input, not an ERC-20.

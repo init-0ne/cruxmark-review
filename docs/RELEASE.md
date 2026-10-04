@@ -46,7 +46,13 @@ pnpm run deployment:verify --network robinhood-testnet
 
 The verifier requires a clean source revision for public evidence and reads the broadcast file for the selected network. It verifies the receipt, block hash, creation input, source compiler/settings and exact current/historical runtime bytecode. It writes `work/deployment/robinhood-testnet.json`. For Sepolia use `--network arbitrum-sepolia`; for a different broadcast file use `--broadcast <path>`. No RPC URL/credentials are stored in the manifest.
 
-Retain a reviewed copy of the public manifest for submission. Explorer source verification is a separate action with the exact compiler/settings and source; the manifest does not assert explorer verification.
+Retain a reviewed copy of the public manifest for submission. Explorer source verification is a separate action; the manifest does not assert it. On October 4 the factory and all seven contracts of the complete run were verified on the Robinhood Chain Testnet Blockscout, which needs no API key. Blockscout decoded each run contract's constructor arguments from its creation data, and they match the report:
+
+```sh
+pnpm exec forge verify-contract <address> src/ScenarioFactory.sol:ScenarioFactory --root contracts --rpc-url https://rpc.testnet.chain.robinhood.com --verifier blockscout --verifier-url https://explorer.testnet.chain.robinhood.com/api/ --compiler-version 0.8.30 --optimizer-runs 200 --evm-version paris --watch
+```
+
+Check the result at `https://explorer.testnet.chain.robinhood.com/api/v2/smart-contracts/<address>` (`is_fully_verified`).
 
 Set the public build environment to the selected `VITE_NETWORK` and verified `VITE_FACTORY_ADDRESS`. Shell values take precedence over `.env.local`, which `deploy:local` fills with local settings, so pass the public values explicitly when building for a public network. The browser checks compiled factory bytecode before any scenario action. A changed contract requires a matching redeployment/build; a copied address is insufficient.
 
