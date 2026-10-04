@@ -32,7 +32,7 @@ Use these facts in the signed-in HackQuest submission form. The registered user 
 
 ## Code produced during the Buildathon
 
-The repository started October 2, 2026, during the September 14–October 4 online Buildathon. Structured commits show the foundation and interface (`205b755`, `339cfa1`), the isolated contract suite (`b3d8132`, `3c26d0c`, `26022e4`), browser-wallet execution and evidence (`b1fe0c5`, `c88584f`, `f12c4f8`), independent deployment/report checks and browser regressions (`0788133`, `fe254cc`, `eb7e2b5`, `f26c606`), and the verified testnet factory/public demo (`c79a449`, `bf1941e`, `c131f3e`). The private judging mirror contains the full history. Local `pnpm run check`, `UI_FULL=1 pnpm run ui:test` and `pnpm run doctor` passed for the public evidence release; check hosted CI for the final pushed source revision before submitting.
+The repository started October 2, 2026, during the September 14–October 4 online Buildathon. Structured commits show the foundation and interface (`205b755`, `339cfa1`), the isolated contract suite (`b3d8132`, `3c26d0c`, `26022e4`), browser-wallet execution and evidence (`b1fe0c5`, `c88584f`, `f12c4f8`), independent deployment/report checks and browser regressions (`0788133`, `fe254cc`, `eb7e2b5`, `f26c606`), and the verified testnet factory/public demo (`c79a449`, `bf1941e`, `c131f3e`, `da4a817`). The private judging mirror contains the full history. Local `pnpm run check`, `UI_FULL=1 pnpm run ui:test` and `pnpm run doctor` passed for the public evidence release. [Hosted CI for `da4a817`](https://github.com/0xuser64bit/CRUXMARK/actions/runs/37189411117) passed both required jobs.
 
 ## Evidence and limits
 
