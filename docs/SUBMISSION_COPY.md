@@ -1,6 +1,6 @@
 # Cruxmark — submission copy
 
-Use these facts in the signed-in HackQuest submission form. The registered user must review eligibility, legal terms and the Arbitrum One prize wallet themselves. Confirm that the official reviewer accepted the private read-only invitation before treating source access as complete. [Submission checklist](SUBMISSION.md) records what remains open.
+Use these facts in the signed-in HackQuest submission form. The registered user must review eligibility, legal terms and the Arbitrum One prize wallet themselves. The source repository is public. [Submission checklist](SUBMISSION.md) records what remains open.
 
 ## Project
 
@@ -18,8 +18,7 @@ Use these facts in the signed-in HackQuest submission form. The registered user 
 
 - **Frontend/demo:** https://cruxmark.vercel.app/
 - **Fallback demo:** https://0xuser64bit.github.io/cruxmark-demo/
-- **Source for judging:** https://github.com/init-0ne/cruxmark-review (private full-history mirror; `engineering-AF` invited with read permission, acceptance pending)
-- **Original source:** https://github.com/0xuser64bit/CRUXMARK (private)
+- **Source code:** https://github.com/init-0ne/cruxmark-review (public, full commit history)
 - **Public demo assets:** https://github.com/0xuser64bit/cruxmark-demo (compiled static files and public evidence JSON only)
 - **Complete public evidence:** https://cruxmark.vercel.app/evidence/robinhood-testnet-complete.json (29 on-chain actions; 15/15 checks)
 - **Hosted-browser split evidence:** https://cruxmark.vercel.app/evidence/robinhood-testnet-browser-split.json (6 on-chain actions; 4/4 checks)
@@ -33,7 +32,7 @@ Use these facts in the signed-in HackQuest submission form. The registered user 
 
 ## Code produced during the Buildathon
 
-The repository started October 2, 2026, during the September 14–October 4 online Buildathon. Structured commits show the foundation and interface (`205b755`, `339cfa1`), the isolated contract suite (`b3d8132`, `3c26d0c`, `26022e4`), browser-wallet execution and evidence (`b1fe0c5`, `c88584f`, `f12c4f8`), independent deployment/report checks and browser regressions (`0788133`, `fe254cc`, `eb7e2b5`, `f26c606`), and the verified testnet factory/public demo (`c79a449`, `bf1941e`, `c131f3e`, `da4a817`). The private judging mirror contains the full history. Local `pnpm run check`, `UI_FULL=1 pnpm run ui:test` and `pnpm run doctor` passed for the public evidence release. [Hosted CI for `da4a817`](https://github.com/0xuser64bit/CRUXMARK/actions/runs/37189411117) passed both required jobs.
+The repository started October 2, 2026, during the September 14–October 4 online Buildathon. Structured commits show the foundation and interface (`205b755`, `339cfa1`), the isolated contract suite (`b3d8132`, `3c26d0c`, `26022e4`), browser-wallet execution and evidence (`b1fe0c5`, `c88584f`, `f12c4f8`), independent deployment/report checks and browser regressions (`0788133`, `fe254cc`, `eb7e2b5`, `f26c606`), and the verified testnet factory/public demo (`c79a449`, `bf1941e`, `c131f3e`, `da4a817`). The public source repository contains the full history. Local `pnpm run check`, `UI_FULL=1 pnpm run ui:test` and `pnpm run doctor` passed for the public evidence release. [Hosted CI for `da4a817`](https://github.com/0xuser64bit/CRUXMARK/actions/runs/37189411117) passed both required jobs.
 
 ## Evidence and limits
 

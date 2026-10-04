@@ -2,7 +2,7 @@
 
 This is a working preparation checklist. The user confirmed registration on October 3; Cruxmark has not been submitted. Use `HACKATHON.md` for official facts and outstanding rule checks.
 
-The [submission copy](SUBMISSION_COPY.md) contains the verified project description, demo URL, public-run evidence, network, factory address, code history and scope language ready for the signed-in form. The private source invitation is pending acceptance.
+The [submission copy](SUBMISSION_COPY.md) contains the verified project description, demo URL, public-run evidence, network, factory address, code history and scope language ready for the signed-in form. The full-history source repository is public.
 
 ## Account and eligibility
 
@@ -17,7 +17,7 @@ The [submission copy](SUBMISSION_COPY.md) contains the verified project descript
 - [x] Record each public-run contract's network, address, role and controlled-mock scope in the evidence reports.
 - [x] Record owner, transaction receipts, deployed bytecode, compiler and source commit in the reports and factory manifest.
 - [x] Publish the primary [Vercel demo](https://cruxmark.vercel.app/) and retain the [GitHub Pages fallback](https://0xuser64bit.github.io/cruxmark-demo/); both loaded and read chain 46630 on October 4.
-- [ ] Confirm `engineering-AF` accepted read permission to the [private judging mirror](https://github.com/init-0ne/cruxmark-review); invitation `336001549` is pending.
+- [x] Publish the full-history [source repository](https://github.com/init-0ne/cruxmark-review) after scanning its history for secrets (public on October 4).
 - [x] Prepare event-period code history for the submission form.
 - [x] Prepare accurate factory/pool/token entries, with N/A for pool and token.
 - [x] Prepare sponsor technology wording: Robinhood Chain Testnet only; no fabricated USDG or issuer partnership.
@@ -46,8 +46,8 @@ Clearly state that fault inputs and the unsafe integration are deliberately cons
 - [ ] Submit with buffer before October 4, 21:29 IST (23:59 SGT), after rechecking the event.
 - [ ] Capture submission confirmation and save the submitted source version.
 
-Registration is user-confirmed. The public factory, hosted demo, complete public suite and hosted-browser split are verified. Reviewer acceptance, eligibility and submission remain open; `STATUS.md` records verified progress.
+Registration is user-confirmed. The public factory, hosted demo, complete public suite, hosted-browser split and public source are verified. Eligibility and submission remain open; `STATUS.md` records verified progress.
 
 ## Locally verified technical readiness
 
-All three families, healthy controls, blocked-price repayment, owner isolation, exact report amounts and live receipt/bytecode verification have runnable local checks. The full check includes 41 contract tests and 41 real local actions covering 15 report checks. Equivalent public-chain evidence is linked above, including a browser-produced split report. Both full-history source repositories remain private; the public demo repository contains only static build assets and the reference JSON. Verify required CI against the exact release commit before submission.
+All three families, healthy controls, blocked-price repayment, owner isolation, exact report amounts and live receipt/bytecode verification have runnable local checks. The full check includes 41 contract tests and 41 real local actions covering 15 report checks. Equivalent public-chain evidence is linked above, including a browser-produced split report. The full-history source repository is public; the separate demo repository contains only static build assets and the reference JSON. Verify required CI against the exact release commit before submission.
